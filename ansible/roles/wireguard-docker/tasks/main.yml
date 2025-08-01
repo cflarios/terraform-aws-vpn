@@ -13,6 +13,7 @@
       - gnupg
       - lsb-release
       - software-properties-common
+      - net-tools  # Incluye netstat
     state: present
 
 - name: Agregar clave GPG de Docker
@@ -184,6 +185,16 @@
   apt:
     name: python3
     state: present
+
+- name: Verificar que netstat está disponible
+  shell: command -v netstat
+  register: netstat_check
+  changed_when: false
+  failed_when: false
+
+- name: Mostrar estado de netstat
+  debug:
+    msg: "{{ 'netstat está disponible' if netstat_check.rc == 0 else 'ADVERTENCIA: netstat no está disponible' }}"
 
 - name: Verificar que las configuraciones existen antes de iniciar servidor HTTP
   shell: ls -la {{ wireguard.config_dir }}/peer*/

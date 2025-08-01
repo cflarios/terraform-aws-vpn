@@ -14,7 +14,11 @@ echo "🔍 Troubleshooting WireGuard Docker en $SERVER_IP"
 echo "================================================="
 
 echo ""
-echo "🐳 Estado del contenedor Docker:"
+echo "� Verificando herramientas necesarias en el servidor:"
+ssh -i ~/.ssh/vpn-server-key ubuntu@$SERVER_IP 'command -v netstat >/dev/null 2>&1 && echo "✅ netstat disponible" || echo "❌ netstat no encontrado"'
+
+echo ""
+echo "�🐳 Estado del contenedor Docker:"
 ssh -i ~/.ssh/vpn-server-key ubuntu@$SERVER_IP 'sudo docker ps | grep wireguard'
 
 echo ""

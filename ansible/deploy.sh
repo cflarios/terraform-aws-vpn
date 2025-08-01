@@ -17,9 +17,50 @@ echo "================================================="
 
 # Verificar si Ansible está instalado
 if ! command -v ansible &> /dev/null; then
-    echo -e "${RED}❌ Ansible no está instalado${NC}"
-    echo -e "${YELLOW}💡 Instálalo con: sudo apt install ansible${NC}"
-    exit 1
+    echo -e "${YELLOW}⚠️  Ansible no está instalado${NC}"
+    echo -e "${BLUE}🔧 Instalando Ansible...${NC}"
+    
+    # Detectar el sistema operativo
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        # Linux
+        if command -v apt &> /dev/null; then
+            # Ubuntu/Debian
+            sudo apt update && sudo apt install -y ansible
+        elif command -v yum &> /dev/null; then
+            # CentOS/RHEL
+            sudo yum install -y epel-release && sudo yum install -y ansible
+        elif command -v dnf &> /dev/null; then
+            # Fedora
+            sudo dnf install -y ansible
+        else
+            echo -e "${RED}❌ No se pudo detectar el gestor de paquetes${NC}"
+            echo -e "${YELLOW}💡 Instala Ansible manualmente: https://docs.ansible.com/ansible/latest/installation_guide/index.html${NC}"
+            exit 1
+        fi
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS
+        if command -v brew &> /dev/null; then
+            brew install ansible
+        else
+            echo -e "${RED}❌ Homebrew no está instalado${NC}"
+            echo -e "${YELLOW}💡 Instala Homebrew primero: https://brew.sh/${NC}"
+            exit 1
+        fi
+    else
+        echo -e "${RED}❌ Sistema operativo no soportado: $OSTYPE${NC}"
+        echo -e "${YELLOW}💡 Instala Ansible manualmente: https://docs.ansible.com/ansible/latest/installation_guide/index.html${NC}"
+        exit 1
+    fi
+    
+    # Verificar que la instalación fue exitosa
+    if ! command -v ansible &> /dev/null; then
+        echo -e "${RED}❌ Error al instalar Ansible${NC}"
+        exit 1
+    else
+        echo -e "${GREEN}✅ Ansible instalado correctamente${NC}"
+    fi
+else
+    echo -e "${GREEN}✅ Ansible ya está instalado${NC}"
 fi
 
 # Verificar si se proporcionó la IP del servidor

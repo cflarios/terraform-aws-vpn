@@ -53,11 +53,10 @@ scp -i ~/.ssh/vpn-server-key ubuntu@<IP>:/root/wireguard/peer1/peer1.conf .
 
 ## 📋 Requisitos previos
 
-1. **Ansible instalado**:
-   ```bash
-   sudo apt update
-   sudo apt install ansible
-   ```
+1. **Sistema compatible**:
+   - Linux (Ubuntu/Debian/CentOS/RHEL/Fedora)
+   - macOS (con Homebrew)
+   - **Ansible se instalará automáticamente** si no está presente
 
 2. **Clave SSH configurada**:
    - Debe existir en `~/.ssh/vpn-server-key`
