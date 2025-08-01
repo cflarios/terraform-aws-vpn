@@ -1,0 +1,18 @@
+# Ejemplo de configuración de variables
+# Copia este archivo a terraform.tfvars y modifica los valores según tus necesidades
+
+# Configuración general
+aws_region  = "us-east-1"
+environment = "dev"
+
+# Configuración de red
+vpc_cidr           = "10.0.0.0/16"
+availability_zone  = "us-east-1a"
+public_subnet_cidr = "10.0.1.0/24"
+
+# Configuración de EC2
+instance_type = "t3.micro"
+
+# Opcional: Nombre del key pair para acceso SSH
+# Debes crear este key pair en AWS EC2 antes de usarlo
+# key_name = "mi-key-pair"
