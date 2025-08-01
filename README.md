@@ -39,6 +39,32 @@ Infraestructura como código para desplegar un servidor VPN en AWS usando Terraf
 
 ## Inicio rápido
 
+### 🤖 Opción 1: Automatizado con GitHub Actions (Recomendado)
+
+**Para uso temporal de VPN:**
+
+1. **Configurar secrets en GitHub**:
+   - `AWS_ACCESS_KEY_ID`
+   - `AWS_SECRET_ACCESS_KEY`
+
+2. **Desplegar VPN**:
+   ```
+   GitHub → Actions → "Deploy VPN Infrastructure" → Run workflow
+   ```
+
+3. **Obtener configuraciones**:
+   ```
+   Ir a http://IP_PUBLICA:8080 (se muestra en el workflow)
+   Descargar archivos .conf o QR codes
+   ```
+
+4. **Destruir cuando termines**:
+   ```
+   GitHub → Actions → "Destroy VPN Infrastructure" → Type "DESTROY" → Run
+   ```
+
+### 🛠️ Opción 2: Manual (Para desarrollo)
+
 1. **Desplegar infraestructura**:
    ```bash
    cd terraform/
@@ -78,12 +104,31 @@ Infraestructura como código para desplegar un servidor VPN en AWS usando Terraf
 
 ## Documentación
 
-- [Documentación de Terraform](./terraform/README.md)
-- [Documentación de Ansible](./ansible/README.md)
+- [📖 Documentación de Terraform](./terraform/README.md)
+- [🐳 Documentación de Ansible](./ansible/README.md)
+- [🚀 Documentación de GitHub Actions](./.github/workflows/README.md)
+
+## Casos de Uso
+
+### 🎯 VPN Temporal (GitHub Actions)
+- **Ideal para**: Uso ocasional, viajes, trabajo remoto temporal
+- **Beneficios**: Sin costos cuando no usas, deploy en 10 minutos
+- **Workflow**: Deploy → Usar → Destroy
+
+### 🛠️ VPN Permanente (Manual)
+- **Ideal para**: Desarrollo, testing, uso continuo
+- **Beneficios**: Control total, personalización
+- **Workflow**: Deploy una vez → Mantener corriendo
 
 ## Requisitos
 
+### Para GitHub Actions
+- Cuenta AWS con permisos EC2/VPC
+- Secrets configurados en GitHub
+- ✅ **No necesitas instalar nada localmente**
+
+### Para deploy manual
 - AWS CLI configurado
 - Terraform >= 1.0
-- Ansible
+- Ansible (se instala automáticamente)
 - Key pair de AWS (se crea automáticamente)

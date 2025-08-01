@@ -1,0 +1,225 @@
+name: 🚀 Deploy VPN Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment name'
+        required: true
+        default: 'dev'
+        type: string
+      instance_type:
+        description: 'EC2 instance type'
+        required: true
+        default: 't3.micro'
+        type: choice
+        options:
+          - 't3.micro'
+          - 't3.small'
+          - 't3.medium'
+      wireguard_peers:
+        description: 'Number of WireGuard clients'
+        required: true
+        default: '3'
+        type: string
+
+env:
+  AWS_REGION: us-east-1
+  TF_VAR_environment: ${{ github.event.inputs.environment }}
+  TF_VAR_instance_type: ${{ github.event.inputs.instance_type }}
+
+jobs:
+  deploy-infrastructure:
+    name: 🏗️ Deploy Infrastructure
+    runs-on: ubuntu-latest
+    
+    outputs:
+      instance_ip: ${{ steps.terraform_output.outputs.instance_ip }}
+      
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: 🏗️ Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.0"
+
+      - name: 🔑 Generate SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keygen -t rsa -b 4096 -f ~/.ssh/vpn-server-key -N "" -C "github-actions-vpn-key"
+          chmod 600 ~/.ssh/vpn-server-key
+          chmod 644 ~/.ssh/vpn-server-key.pub
+          echo "SSH key generated successfully"
+
+      - name: 🚀 Terraform Init
+        working-directory: ./terraform
+        run: terraform init
+
+      - name: 📋 Terraform Plan
+        working-directory: ./terraform
+        run: terraform plan -out=tfplan
+
+      - name: ✅ Terraform Apply
+        working-directory: ./terraform
+        run: terraform apply -auto-approve tfplan
+
+      - name: 📤 Get Terraform Outputs
+        id: terraform_output
+        working-directory: ./terraform
+        run: |
+          INSTANCE_IP=$(terraform output -raw instance_public_ip)
+          echo "instance_ip=$INSTANCE_IP" >> $GITHUB_OUTPUT
+          echo "Instance IP: $INSTANCE_IP"
+
+      - name: 💾 Save SSH Key and IP for Ansible
+        run: |
+          echo "${{ steps.terraform_output.outputs.instance_ip }}" > instance_ip.txt
+          # SSH key ya está en ~/.ssh/vpn-server-key
+
+      - name: 📤 Upload Infrastructure Info
+        uses: actions/upload-artifact@v4
+        with:
+          name: infrastructure-info
+          path: |
+            ~/.ssh/vpn-server-key
+            ~/.ssh/vpn-server-key.pub
+            instance_ip.txt
+          retention-days: 1
+
+  configure-wireguard:
+    name: 🔐 Configure WireGuard VPN
+    runs-on: ubuntu-latest
+    needs: deploy-infrastructure
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 📥 Download Infrastructure Info
+        uses: actions/download-artifact@v4
+        with:
+          name: infrastructure-info
+          path: ./
+
+      - name: 🔧 Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          cp vpn-server-key ~/.ssh/vpn-server-key
+          cp vpn-server-key.pub ~/.ssh/vpn-server-key.pub
+          chmod 600 ~/.ssh/vpn-server-key
+          chmod 644 ~/.ssh/vpn-server-key.pub
+
+      - name: 📋 Get Instance IP
+        id: get_ip
+        run: |
+          INSTANCE_IP=$(cat instance_ip.txt)
+          echo "instance_ip=$INSTANCE_IP" >> $GITHUB_OUTPUT
+          echo "Instance IP: $INSTANCE_IP"
+
+      - name: ⏳ Wait for SSH to be available
+        run: |
+          INSTANCE_IP="${{ steps.get_ip.outputs.instance_ip }}"
+          echo "Waiting for SSH to be available on $INSTANCE_IP..."
+          for i in {1..30}; do
+            if ssh -i ~/.ssh/vpn-server-key -o StrictHostKeyChecking=no -o ConnectTimeout=5 ubuntu@$INSTANCE_IP "echo 'SSH is ready'" 2>/dev/null; then
+              echo "✅ SSH is available"
+              break
+            fi
+            echo "⏳ Attempt $i/30: SSH not ready yet, waiting 10 seconds..."
+            sleep 10
+          done
+
+      - name: 🐍 Setup Python and Ansible
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Install Ansible
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible
+
+      - name: 📝 Create Ansible Inventory
+        working-directory: ./ansible
+        run: |
+          INSTANCE_IP="${{ steps.get_ip.outputs.instance_ip }}"
+          cat > inventory.ini << EOF
+          [vpn_servers]
+          vpn-server ansible_host=$INSTANCE_IP ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/vpn-server-key
+          EOF
+          echo "Inventory created with IP: $INSTANCE_IP"
+
+      - name: 🔧 Update WireGuard Peers Configuration
+        working-directory: ./ansible
+        run: |
+          sed -i "s/peers: 3/peers: ${{ github.event.inputs.wireguard_peers }}/" group_vars/all.yml
+          echo "WireGuard peers set to: ${{ github.event.inputs.wireguard_peers }}"
+
+      - name: 🔍 Test Ansible Connectivity
+        working-directory: ./ansible
+        run: |
+          ansible vpn_servers -m ping -v
+
+      - name: 🚀 Deploy WireGuard with Ansible
+        working-directory: ./ansible
+        run: |
+          ansible-playbook site.yml -v
+
+      - name: 📋 Get WireGuard Configuration URLs
+        working-directory: ./ansible
+        run: |
+          INSTANCE_IP="${{ steps.get_ip.outputs.instance_ip }}"
+          echo "🎉 VPN Deployment Complete!"
+          echo "=========================="
+          echo ""
+          echo "📱 Access your VPN configurations:"
+          echo "🌐 Web Interface: http://$INSTANCE_IP:8080"
+          echo ""
+          echo "📋 Instance Information:"
+          echo "🖥️  Instance IP: $INSTANCE_IP"
+          echo "🔧 SSH Access: ssh -i ~/.ssh/vpn-server-key ubuntu@$INSTANCE_IP"
+          echo ""
+          echo "🔐 WireGuard Clients: ${{ github.event.inputs.wireguard_peers }}"
+          echo "🌍 Environment: ${{ github.event.inputs.environment }}"
+          echo ""
+          echo "⚠️  Remember to destroy the infrastructure when you're done!"
+          echo "🗑️  Use the 'Destroy VPN Infrastructure' workflow"
+
+      - name: 📊 Create Deployment Summary
+        run: |
+          INSTANCE_IP="${{ steps.get_ip.outputs.instance_ip }}"
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          # 🎉 VPN Deployment Successful!
+          
+          ## 📋 Deployment Information
+          - **Environment**: ${{ github.event.inputs.environment }}
+          - **Instance Type**: ${{ github.event.inputs.instance_type }}
+          - **Instance IP**: $INSTANCE_IP
+          - **WireGuard Clients**: ${{ github.event.inputs.wireguard_peers }}
+          
+          ## 📱 Access Your VPN
+          🌐 **Web Interface**: [http://$INSTANCE_IP:8080](http://$INSTANCE_IP:8080)
+          
+          ## 🔧 Management Commands
+          ```bash
+          # SSH Access
+          ssh -i ~/.ssh/vpn-server-key ubuntu@$INSTANCE_IP
+          
+          # Check WireGuard Status  
+          ssh -i ~/.ssh/vpn-server-key ubuntu@$INSTANCE_IP 'sudo docker logs wireguard'
+          ```
+          
+          ## ⚠️ Important
+          - Download your VPN configurations from the web interface
+          - **Remember to destroy** the infrastructure when finished
+          - Use the **"Destroy VPN Infrastructure"** workflow to clean up
+          EOF
