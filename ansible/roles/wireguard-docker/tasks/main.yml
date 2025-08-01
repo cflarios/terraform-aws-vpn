@@ -104,29 +104,47 @@
     port: '22'
     proto: tcp
 
-- name: Permitir HTTP en firewall
-  ufw:
-    rule: allow
-    port: '80'
-    proto: tcp
-
 - name: Permitir HTTPS en firewall
   ufw:
     rule: allow
     port: '443'
     proto: tcp
 
+- name: Permitir servidor de configuraciones en firewall
+  ufw:
+    rule: allow
+    port: '8080'
+    proto: tcp
+
 - name: Iniciar contenedor WireGuard
   shell: |
     cd /root/docker-wireguard
     docker-compose up -d
-  args:
-    creates: "{{ wireguard.config_dir }}/wg0.conf"
+  register: docker_result
 
-- name: Esperar a que se generen las configuraciones
-  wait_for:
-    path: "{{ wireguard.config_dir }}/wg0.conf"
-    timeout: 60
+- name: Esperar a que el contenedor esté corriendo
+  shell: docker ps | grep wireguard | grep Up
+  register: container_status
+  until: container_status.rc == 0
+  retries: 30
+  delay: 2
+
+- name: Esperar a que se generen las configuraciones de peers
+  shell: |
+    # Esperar a que se cree al menos un directorio de peer
+    timeout=60
+    while [ $timeout -gt 0 ]; do
+      if [ -d "{{ wireguard.config_dir }}/peer1" ] && [ -f "{{ wireguard.config_dir }}/peer1/peer1.conf" ]; then
+        echo "Configuraciones generadas"
+        exit 0
+      fi
+      sleep 2
+      timeout=$((timeout-2))
+    done
+    echo "Timeout esperando configuraciones"
+    exit 1
+  register: config_wait
+  changed_when: false
 
 - name: Configurar script de descarga de configuraciones
   template:
@@ -144,14 +162,55 @@
     owner: root
     group: root
 
+- name: Debug - Mostrar logs del contenedor WireGuard
+  shell: docker logs wireguard --tail 20
+  register: container_logs
+  changed_when: false
+
+- name: Mostrar logs del contenedor
+  debug:
+    msg: "{{ container_logs.stdout_lines }}"
+
+- name: Debug - Verificar estructura de directorios
+  shell: find {{ wireguard.config_dir }} -type f -name "*.conf" -o -name "*.png" 2>/dev/null || echo "No se encontraron archivos de configuración"
+  register: config_files
+  changed_when: false
+
+- name: Mostrar archivos de configuración encontrados
+  debug:
+    msg: "{{ config_files.stdout_lines }}"
+
 - name: Instalar Python3 para el servidor HTTP
   apt:
     name: python3
     state: present
 
+- name: Verificar que las configuraciones existen antes de iniciar servidor HTTP
+  shell: ls -la {{ wireguard.config_dir }}/peer*/
+  register: peer_check
+  changed_when: false
+
+- name: Mostrar configuraciones encontradas
+  debug:
+    msg: "{{ peer_check.stdout_lines }}"
+
+- name: Matar procesos previos del servidor de configuraciones
+  shell: pkill -f serve-configs.py || true
+  changed_when: false
+
 - name: Iniciar servidor HTTP para configuraciones (puerto 8080)
   shell: |
     cd {{ wireguard.config_dir }}
     nohup python3 /root/serve-configs.py > /var/log/config-server.log 2>&1 &
-  args:
-    creates: /var/log/config-server.log
+    echo $! > /var/run/config-server.pid
+  changed_when: true
+
+- name: Verificar que el servidor HTTP está corriendo
+  shell: netstat -tlnp | grep :8080
+  register: http_server_check
+  changed_when: false
+  ignore_errors: yes
+
+- name: Mostrar estado del servidor HTTP
+  debug:
+    msg: "{{ 'Servidor HTTP corriendo en puerto 8080' if http_server_check.rc == 0 else 'Error: Servidor HTTP no está corriendo' }}"

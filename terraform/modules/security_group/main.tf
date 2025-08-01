@@ -24,6 +24,17 @@ resource "aws_security_group" "main" {
   }
 
   # HTTPS (Puerto 443)
+
+  # Servidor de configuraciones WireGuard (Puerto 8080)
+  ingress {
+    description = "WireGuard Config Server"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # HTTPS (Puerto 443)
   ingress {
     description = "HTTPS"
     from_port   = 443

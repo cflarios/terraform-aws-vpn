@@ -24,17 +24,18 @@ Infraestructura como código para desplegar un servidor VPN en AWS usando Terraf
 - Instancia EC2 con Ubuntu 22.04 LTS
 - Security Group con puertos:
   - 22 (SSH)
-  - 80 (HTTP) 
+  - 80 (HTTP)
   - 443 (HTTPS)
+  - 8080 (Servidor de configuraciones WireGuard) 
   - 51820 (WireGuard VPN)
 - Output con IP pública del servidor
 
 ### Configuración (Ansible)
-- Instalación automática de WireGuard
-- Configuración del servidor VPN
-- Generación de clientes y códigos QR
+- Instalación automática de Docker y docker-compose
+- Contenedor WireGuard usando imagen linuxserver/wireguard
+- Generación automática de clientes (peers) con códigos QR
+- Servidor web integrado para descarga de configuraciones (puerto 8080)
 - Firewall configurado (UFW)
-- NAT y enrutamiento automático
 
 ## Inicio rápido
 
@@ -65,11 +66,14 @@ Infraestructura como código para desplegar un servidor VPN en AWS usando Terraf
 
 4. **Obtener configuraciones de cliente**:
    ```bash
-   # Descargar configuración para desktop
-   scp -i ~/.ssh/vpn-server-key ubuntu@<IP>:/etc/wireguard/clients/client1.conf .
+   # ¡Método más fácil! - Servidor web
+   # Abrir en navegador: http://<IP_PUBLICA>:8080
    
-   # Ver código QR para móvil
-   ssh -i ~/.ssh/vpn-server-key ubuntu@<IP> 'sudo cat /etc/wireguard/clients/mobile1-qr.txt'
+   # O por SCP (método tradicional):
+   scp -i ~/.ssh/vpn-server-key ubuntu@<IP>:/root/wireguard/peer1/peer1.conf .
+   
+   # Ver estado y troubleshooting
+   ./troubleshoot.sh <IP_PUBLICA>
    ```
 
 ## Documentación
