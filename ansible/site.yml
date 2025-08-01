@@ -1,0 +1,19 @@
+---
+- name: Configurar servidor WireGuard VPN con Docker
+  hosts: vpn_servers
+  become: yes
+  gather_facts: yes
+  
+  roles:
+    - wireguard-docker
+
+  post_tasks:
+    - name: Mostrar información del servidor
+      debug:
+        msg:
+          - "🎉 ¡Servidor WireGuard con Docker configurado exitosamente!"
+          - "� Contenedor ejecutándose: docker ps"
+          - "📋 Configuraciones generadas en: {{ wireguard.config_dir }}"
+          - "� Ver logs: docker logs wireguard"
+          - "� Reiniciar: docker-compose restart"
+          - "� Configuraciones de cliente disponibles para descarga"

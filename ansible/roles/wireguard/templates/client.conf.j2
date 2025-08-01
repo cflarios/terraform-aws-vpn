@@ -1,0 +1,13 @@
+[Interface]
+# Configuración del cliente {{ client_name }}
+PrivateKey = {{ client_private_key }}
+Address = {{ client_ip }}/32
+DNS = {{ wireguard.dns_servers | join(', ') }}
+
+[Peer]
+# Servidor WireGuard
+PublicKey = {{ server_public_key.stdout }}
+PresharedKey = {{ client_psk }}
+Endpoint = {{ ansible_default_ipv4.address }}:{{ wireguard.port }}
+AllowedIPs = 0.0.0.0/0
+PersistentKeepalive = 25

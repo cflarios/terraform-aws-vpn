@@ -1,0 +1,92 @@
+#!/usr/bin/env python3
+
+import http.server
+import socketserver
+import os
+import urllib.parse
+from pathlib import Path
+
+PORT = 8080
+CONFIG_DIR = "{{ wireguard.config_dir }}"
+
+class WireGuardConfigHandler(http.server.SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=CONFIG_DIR, **kwargs)
+
+    def list_directory(self, path):
+        """Custom directory listing for WireGuard configs"""
+        try:
+            list_content = []
+            list_content.append('<!DOCTYPE html>')
+            list_content.append('<html><head>')
+            list_content.append('<title>WireGuard Configurations</title>')
+            list_content.append('<style>')
+            list_content.append('body { font-family: Arial, sans-serif; margin: 40px; }')
+            list_content.append('h1 { color: #333; }')
+            list_content.append('.file { margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 5px; }')
+            list_content.append('.conf-file { background: #e8f5e8; }')
+            list_content.append('.qr-file { background: #e8e8f5; }')
+            list_content.append('a { text-decoration: none; color: #0066cc; font-weight: bold; }')
+            list_content.append('a:hover { text-decoration: underline; }')
+            list_content.append('.instructions { background: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0; }')
+            list_content.append('</style>')
+            list_content.append('</head><body>')
+            list_content.append('<h1>🔐 WireGuard VPN Configurations</h1>')
+            
+            list_content.append('<div class="instructions">')
+            list_content.append('<h3>📋 Instructions:</h3>')
+            list_content.append('<ul>')
+            list_content.append('<li><strong>.conf files</strong>: Download and import into WireGuard client</li>')
+            list_content.append('<li><strong>.png files</strong>: QR codes for mobile devices</li>')
+            list_content.append('</ul>')
+            list_content.append('</div>')
+
+            # Walk through peer directories
+            for item in sorted(Path(path).iterdir()):
+                if item.is_dir() and item.name.startswith('peer'):
+                    list_content.append(f'<h2>📱 {item.name.upper()}</h2>')
+                    
+                    # Look for .conf and .png files in peer directory
+                    for config_file in sorted(item.iterdir()):
+                        if config_file.suffix in ['.conf', '.png']:
+                            rel_path = os.path.relpath(config_file, CONFIG_DIR)
+                            encoded_path = urllib.parse.quote(rel_path)
+                            
+                            file_class = 'conf-file' if config_file.suffix == '.conf' else 'qr-file'
+                            file_type = '📄 Configuration File' if config_file.suffix == '.conf' else '📱 QR Code'
+                            
+                            list_content.append(f'<div class="file {file_class}">')
+                            list_content.append(f'<a href="{encoded_path}">{file_type}: {config_file.name}</a>')
+                            list_content.append('</div>')
+
+            list_content.append('<hr>')
+            list_content.append(f'<p><small>Server: {{ ansible_default_ipv4.address }}:8080 | WireGuard Docker Container</small></p>')
+            list_content.append('</body></html>')
+            
+            encoded = '\n'.join(list_content).encode('utf-8', 'surrogateescape')
+            f = io.BytesIO()
+            f.write(encoded)
+            f.seek(0)
+            self.send_response(200)
+            self.send_header("Content-type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(encoded)))
+            self.end_headers()
+            return f
+            
+        except OSError:
+            self.send_error(404, "No permission to list directory")
+            return None
+
+if __name__ == "__main__":
+    import io
+    
+    print(f"🌐 Starting WireGuard config server on port {PORT}")
+    print(f"📁 Serving files from: {CONFIG_DIR}")
+    print(f"🔗 Access at: http://{{ ansible_default_ipv4.address }}:{PORT}")
+    
+    with socketserver.TCPServer(("", PORT), WireGuardConfigHandler) as httpd:
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            print("\n🛑 Server stopped")
+            httpd.shutdown()

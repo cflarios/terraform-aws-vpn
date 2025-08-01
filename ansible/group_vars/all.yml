@@ -1,0 +1,21 @@
+---
+# Configuración de WireGuard con Docker
+wireguard:
+  # Red interna de WireGuard
+  internal_subnet: "10.13.13.0"
+  server_port: 51820
+  timezone: "America/Bogota"
+  
+  # Número de peers/clientes a generar
+  peers: 3
+  
+  # DNS para los clientes
+  peer_dns: "auto"  # También puede ser "1.1.1.1" o "8.8.8.8"
+  
+  # Directorio de configuración en el servidor
+  config_dir: "/root/wireguard"
+
+# Configuración de Docker
+docker:
+  # Versión de docker-compose
+  compose_version: "2.24.0"

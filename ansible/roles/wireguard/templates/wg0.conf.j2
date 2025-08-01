@@ -1,0 +1,21 @@
+[Interface]
+# Configuración del servidor WireGuard
+PrivateKey = {{ server_private_key.stdout }}
+Address = {{ wireguard.server_ip }}/{{ wireguard.network.split('/')[1] }}
+ListenPort = {{ wireguard.port }}
+
+# Configuración post-up y post-down para enrutamiento
+PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables -t nat -A POSTROUTING -o {{ firewall.public_interface }} -j MASQUERADE
+PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables -t nat -D POSTROUTING -o {{ firewall.public_interface }} -j MASQUERADE
+
+{% for client in wireguard.clients %}
+{% set client_public_key = lookup('file', '/etc/wireguard/keys/' + client.name + '-public.key') %}
+{% set client_psk = lookup('file', '/etc/wireguard/keys/' + client.name + '-psk.key') %}
+
+# Cliente: {{ client.name }}
+[Peer]
+PublicKey = {{ client_public_key }}
+PresharedKey = {{ client_psk }}
+AllowedIPs = {{ client.ip }}/32
+
+{% endfor %}

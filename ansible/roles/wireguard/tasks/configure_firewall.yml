@@ -1,0 +1,57 @@
+---
+- name: Reiniciar UFW
+  ufw:
+    state: reset
+
+- name: Configurar políticas por defecto de UFW
+  ufw:
+    direction: "{{ item.direction }}"
+    policy: "{{ item.policy }}"
+  loop:
+    - { direction: 'incoming', policy: 'deny' }
+    - { direction: 'outgoing', policy: 'allow' }
+
+- name: Permitir SSH
+  ufw:
+    rule: allow
+    port: '22'
+    proto: tcp
+
+- name: Permitir HTTP
+  ufw:
+    rule: allow
+    port: '80'
+    proto: tcp
+
+- name: Permitir HTTPS
+  ufw:
+    rule: allow
+    port: '443'
+    proto: tcp
+
+- name: Permitir WireGuard
+  ufw:
+    rule: allow
+    port: "{{ wireguard.port }}"
+    proto: udp
+
+- name: Configurar NAT para WireGuard
+  blockinfile:
+    path: /etc/ufw/before.rules
+    marker: "# {mark} WIREGUARD RULES"
+    insertbefore: "# Don't delete these required lines"
+    block: |
+      # START WIREGUARD RULES
+      # NAT table rules
+      *nat
+      :POSTROUTING ACCEPT [0:0]
+      # Allow traffic from WireGuard clients to {{ firewall.public_interface }}
+      -A POSTROUTING -s {{ wireguard.network }} -o {{ firewall.public_interface }} -j MASQUERADE
+      COMMIT
+      # END WIREGUARD RULES
+  notify:
+    - restart ufw
+
+- name: Habilitar UFW
+  ufw:
+    state: enabled

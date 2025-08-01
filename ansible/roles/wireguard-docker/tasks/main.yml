@@ -1,0 +1,157 @@
+---
+- name: Actualizar cache de paquetes
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Instalar dependencias para Docker
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - software-properties-common
+    state: present
+
+- name: Agregar clave GPG de Docker
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Agregar repositorio de Docker
+  apt_repository:
+    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+    state: present
+
+- name: Instalar Docker
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+    state: present
+
+- name: Iniciar y habilitar Docker
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Agregar usuario ubuntu al grupo docker
+  user:
+    name: ubuntu
+    groups: docker
+    append: yes
+
+- name: Descargar docker-compose
+  get_url:
+    url: "https://github.com/docker/compose/releases/download/v{{ docker.compose_version }}/docker-compose-linux-x86_64"
+    dest: /usr/local/bin/docker-compose
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: Crear enlace simbólico para docker-compose
+  file:
+    src: /usr/local/bin/docker-compose
+    dest: /usr/bin/docker-compose
+    state: link
+
+- name: Crear directorio para WireGuard
+  file:
+    path: "{{ wireguard.config_dir }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: Crear directorio para docker-compose
+  file:
+    path: /root/docker-wireguard
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: Crear archivo docker-compose.yml
+  template:
+    src: docker-compose.yml.j2
+    dest: /root/docker-wireguard/docker-compose.yml
+    mode: '0644'
+    owner: root
+    group: root
+  notify:
+    - restart wireguard container
+
+- name: Configurar firewall para WireGuard
+  ufw:
+    rule: allow
+    port: "{{ wireguard.server_port }}"
+    proto: udp
+
+- name: Habilitar UFW
+  ufw:
+    state: enabled
+    policy: deny
+    direction: incoming
+
+- name: Permitir SSH en firewall
+  ufw:
+    rule: allow
+    port: '22'
+    proto: tcp
+
+- name: Permitir HTTP en firewall
+  ufw:
+    rule: allow
+    port: '80'
+    proto: tcp
+
+- name: Permitir HTTPS en firewall
+  ufw:
+    rule: allow
+    port: '443'
+    proto: tcp
+
+- name: Iniciar contenedor WireGuard
+  shell: |
+    cd /root/docker-wireguard
+    docker-compose up -d
+  args:
+    creates: "{{ wireguard.config_dir }}/wg0.conf"
+
+- name: Esperar a que se generen las configuraciones
+  wait_for:
+    path: "{{ wireguard.config_dir }}/wg0.conf"
+    timeout: 60
+
+- name: Configurar script de descarga de configuraciones
+  template:
+    src: download-configs.sh.j2
+    dest: /root/download-configs.sh
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: Crear servidor HTTP simple para descargar configuraciones
+  template:
+    src: serve-configs.py.j2
+    dest: /root/serve-configs.py
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: Instalar Python3 para el servidor HTTP
+  apt:
+    name: python3
+    state: present
+
+- name: Iniciar servidor HTTP para configuraciones (puerto 8080)
+  shell: |
+    cd {{ wireguard.config_dir }}
+    nohup python3 /root/serve-configs.py > /var/log/config-server.log 2>&1 &
+  args:
+    creates: /var/log/config-server.log

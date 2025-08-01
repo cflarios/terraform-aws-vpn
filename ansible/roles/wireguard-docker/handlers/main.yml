@@ -1,0 +1,7 @@
+---
+- name: restart wireguard container
+  shell: |
+    cd /root/docker-wireguard
+    docker-compose down
+    docker-compose up -d
+  become: yes

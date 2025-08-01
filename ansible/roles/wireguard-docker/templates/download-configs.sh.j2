@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# Script para facilitar la descarga de configuraciones de WireGuard
+# Uso: ./download-configs.sh
+
+echo "🔗 Configuraciones de WireGuard disponibles:"
+echo "=============================================="
+
+CONFIG_DIR="{{ wireguard.config_dir }}"
+
+# Mostrar configuraciones disponibles
+echo "📁 Directorio de configuraciones: $CONFIG_DIR"
+echo ""
+
+if [ -d "$CONFIG_DIR" ]; then
+    echo "📋 Archivos de configuración disponibles:"
+    ls -la $CONFIG_DIR/peer*/ 2>/dev/null | grep -E '\.(conf|png)$' || echo "⚠️  No se encontraron configuraciones de peers"
+    
+    echo ""
+    echo "🌐 Para descargar desde tu máquina local:"
+    echo "=========================================="
+    
+    # Mostrar comandos para descargar configuraciones
+    for peer_dir in $CONFIG_DIR/peer*/; do
+        if [ -d "$peer_dir" ]; then
+            peer_name=$(basename "$peer_dir")
+            
+            # Configuración para escritorio
+            if [ -f "$peer_dir/$peer_name.conf" ]; then
+                echo "📱 Peer $peer_name (archivo .conf):"
+                echo "   scp -i ~/.ssh/vpn-server-key ubuntu@{{ ansible_default_ipv4.address }}:$peer_dir$peer_name.conf ./"
+            fi
+            
+            # QR Code para móvil
+            if [ -f "$peer_dir/$peer_name.png" ]; then
+                echo "📱 Peer $peer_name (QR Code):"
+                echo "   scp -i ~/.ssh/vpn-server-key ubuntu@{{ ansible_default_ipv4.address }}:$peer_dir$peer_name.png ./"
+            fi
+            echo ""
+        fi
+    done
+    
+    echo "🌍 Servidor HTTP para descarga (puerto 8080):"
+    echo "   http://{{ ansible_default_ipv4.address }}:8080"
+    echo ""
+    echo "📊 Estado del contenedor:"
+    docker ps | grep wireguard
+    
+else
+    echo "❌ Directorio de configuraciones no encontrado"
+fi
