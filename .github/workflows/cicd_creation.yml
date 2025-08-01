@@ -223,6 +223,29 @@ jobs:
             -backend-config="encrypt=true" \
             -backend-config="dynamodb_table=${{ needs.setup-backend.outputs.backend_table }}"
 
+      - name: 🔍 Debug Backend Configuration
+        working-directory: ./terraform
+        run: |
+          echo "🔍 Debugging Terraform backend configuration..."
+          echo "Backend bucket: ${{ needs.setup-backend.outputs.backend_bucket }}"
+          echo "Backend table: ${{ needs.setup-backend.outputs.backend_table }}"
+          echo "State key: vpn-${{ github.event.inputs.environment }}/terraform.tfstate"
+          
+          # Check if .terraform directory exists and what's in it
+          if [ -d .terraform ]; then
+            echo "📁 .terraform directory contents:"
+            ls -la .terraform/
+            if [ -f .terraform/terraform.tfstate ]; then
+              echo "📄 .terraform/terraform.tfstate exists (this indicates local backend)"
+            fi
+          fi
+          
+          # Show terraform configuration
+          echo "🔧 Terraform configuration:"
+          terraform version
+          echo "Backend configuration in use:"
+          cat .terraform/terraform.tfstate 2>/dev/null || echo "No local backend config found"
+
       - name: 📋 Terraform Plan
         working-directory: ./terraform
         run: |
@@ -237,7 +260,58 @@ jobs:
           export TF_VAR_ssh_public_key="$(cat ~/.ssh/vpn-server-key.pub)"
           terraform apply -auto-approve tfplan
 
-      - name: 📤 Get Terraform Outputs
+      - name: 🔍 Verify State Storage in S3
+        run: |
+          echo "🔍 Verifying that Terraform state was saved to S3..."
+          BUCKET="${{ needs.setup-backend.outputs.backend_bucket }}"
+          STATE_KEY="vpn-${{ github.event.inputs.environment }}/terraform.tfstate"
+          
+          echo "Checking for state file in S3: s3://$BUCKET/$STATE_KEY"
+          
+          if aws s3api head-object --bucket "$BUCKET" --key "$STATE_KEY" 2>/dev/null; then
+            echo "✅ State file found in S3!"
+            
+            # Get file size and last modified
+            aws s3api head-object --bucket "$BUCKET" --key "$STATE_KEY" \
+              --query '{Size: ContentLength, LastModified: LastModified}' \
+              --output table
+            
+            echo "📊 State file contents preview:"
+            aws s3 cp "s3://$BUCKET/$STATE_KEY" - | head -20
+          else
+            echo "❌ State file NOT found in S3!"
+            echo "This indicates the state is being stored locally instead of in S3."
+            
+            # List all objects in bucket to see what's there
+            echo "📋 Current S3 bucket contents:"
+            aws s3 ls "s3://$BUCKET/" --recursive || echo "Bucket is empty"
+          fi
+
+      - name: � Verify State Saved to S3
+        working-directory: ./terraform
+        run: |
+          echo "🔍 Verifying that state was saved to S3..."
+          
+          # Check if state exists in S3
+          if aws s3 ls "s3://${{ needs.setup-backend.outputs.backend_bucket }}/vpn-${{ github.event.inputs.environment }}/terraform.tfstate"; then
+            echo "✅ SUCCESS: State file found in S3!"
+            aws s3 ls "s3://${{ needs.setup-backend.outputs.backend_bucket }}/vpn-${{ github.event.inputs.environment }}/" --human-readable
+          else
+            echo "❌ ERROR: State file NOT found in S3!"
+            echo "🔍 Checking what's in the bucket:"
+            aws s3 ls "s3://${{ needs.setup-backend.outputs.backend_bucket }}/" --recursive || echo "Bucket appears empty"
+            
+            echo "🔍 Checking for local state (which shouldn't exist):"
+            ls -la terraform.tfstate* || echo "No local state files"
+            
+            echo "⚠️  This means destroy will not work properly!"
+          fi
+          
+          # Also check DynamoDB locks
+          echo "🔍 Checking DynamoDB state locks..."
+          aws dynamodb scan --table-name "${{ needs.setup-backend.outputs.backend_table }}" --select "COUNT" || echo "No locks found"
+
+      - name: �📤 Get Terraform Outputs
         id: terraform_output
         working-directory: ./terraform
         run: |

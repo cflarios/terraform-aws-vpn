@@ -93,9 +93,52 @@ jobs:
             -backend-config="encrypt=true" \
             -backend-config="dynamodb_table=${{ steps.get_backend.outputs.backend_table }}"
 
-      - name: 📋 Terraform Plan (Destroy)
+      - name: 🔍 Debug Backend and State
         working-directory: ./terraform
         run: |
+          echo "🔍 Debugging Terraform backend and state..."
+          
+          BUCKET="${{ steps.get_backend.outputs.backend_bucket }}"
+          STATE_KEY="vpn-${{ github.event.inputs.environment }}/terraform.tfstate"
+          
+          echo "Backend configuration:"
+          echo "  Bucket: $BUCKET"
+          echo "  State Key: $STATE_KEY"
+          echo "  Region: ${{ env.AWS_REGION }}"
+          
+          # Check if state file exists in S3
+          echo "🔍 Checking if state file exists in S3..."
+          if aws s3api head-object --bucket "$BUCKET" --key "$STATE_KEY" 2>/dev/null; then
+            echo "✅ State file found in S3!"
+            
+            # Show some info about the state
+            echo "📊 State file info:"
+            aws s3api head-object --bucket "$BUCKET" --key "$STATE_KEY" \
+              --query '{Size: ContentLength, LastModified: LastModified}' \
+              --output table
+            
+            # Preview state content
+            echo "📄 State file preview (first few lines):"
+            aws s3 cp "s3://$BUCKET/$STATE_KEY" - | head -10
+          else
+            echo "❌ State file NOT found in S3!"
+            echo "📋 S3 bucket contents:"
+            aws s3 ls "s3://$BUCKET/" --recursive || echo "Bucket is empty"
+          fi
+          
+          # Check local terraform directory
+          if [ -d .terraform ]; then
+            echo "📁 Local .terraform directory exists"
+            ls -la .terraform/
+          fi
+
+      - name: � Terraform Plan (Destroy)
+        working-directory: ./terraform
+        run: |
+          # Debug: Check if we have state
+          echo "🔍 Checking Terraform state before planning..."
+          terraform show || echo "No state found or empty state"
+          
           # Get SSH public key from Parameter Store and pass as variable
           SSH_PUBLIC_KEY=$(aws ssm get-parameter \
             --name "/vpn/${{ github.event.inputs.environment }}/ssh-public-key" \
