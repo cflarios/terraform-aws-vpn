@@ -14,7 +14,6 @@ services:
       - SERVERPORT={{ wireguard.server_port }}
       - PEERS={{ wireguard.peers }}
       - PEERDNS={{ wireguard.peer_dns }}
-      - INTERNAL_SUBNET={{ wireguard.internal_subnet }}
     volumes:
       - {{ wireguard.config_dir }}:/config
       - /lib/modules:/lib/modules

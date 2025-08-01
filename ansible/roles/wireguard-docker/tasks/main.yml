@@ -195,8 +195,10 @@
     msg: "{{ peer_check.stdout_lines }}"
 
 - name: Matar procesos previos del servidor de configuraciones
-  shell: pkill -f serve-configs.py || true
-  changed_when: false
+  shell: pkill -f serve-configs.py
+  register: pkill_result
+  failed_when: false
+  changed_when: pkill_result.rc == 0
 
 - name: Iniciar servidor HTTP para configuraciones (puerto 8080)
   shell: |
