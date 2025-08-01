@@ -41,6 +41,15 @@ resource "aws_security_group" "main" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Servidor de configuraciones WireGuard (Puerto 8080)
+  ingress {
+    description = "WireGuard Config Server"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   # Regla de salida - permitir todo el tráfico saliente
   egress {
     description = "All outbound traffic"

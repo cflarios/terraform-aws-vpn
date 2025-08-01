@@ -11,6 +11,7 @@ Este proyecto de Terraform crea una infraestructura básica en AWS para un servi
   - 80 (HTTP)
   - 443 (HTTPS)
   - 51820 (WireGuard VPN)
+  - 8080 (Servidor de configuraciones)
 - **Instancia EC2** con Ubuntu 22.04 LTS
 
 ## Estructura del proyecto

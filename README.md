@@ -30,8 +30,11 @@ Infraestructura como código para desplegar un servidor VPN en AWS usando Terraf
 - Output con IP pública del servidor
 
 ### Configuración (Ansible)
-- Configuración automatizada del servidor VPN
-- Instalación y configuración de servicios
+- Instalación automática de WireGuard
+- Configuración del servidor VPN
+- Generación de clientes y códigos QR
+- Firewall configurado (UFW)
+- NAT y enrutamiento automático
 
 ## Inicio rápido
 
@@ -48,20 +51,35 @@ Infraestructura como código para desplegar un servidor VPN en AWS usando Terraf
    terraform output instance_public_ip
    ```
 
-3. **Configurar servidor** (próximamente con Ansible):
+3. **Configurar servidor con Ansible**:
    ```bash
    cd ../ansible/
-   # Configuración pendiente
+   
+   # Deploy automático (recomendado)
+   ./deploy.sh <IP_PUBLICA_DEL_SERVIDOR>
+   
+   # O manual:
+   # Editar inventory.ini con la IP del servidor
+   ansible-playbook site.yml
+   ```
+
+4. **Obtener configuraciones de cliente**:
+   ```bash
+   # Descargar configuración para desktop
+   scp -i ~/.ssh/vpn-server-key ubuntu@<IP>:/etc/wireguard/clients/client1.conf .
+   
+   # Ver código QR para móvil
+   ssh -i ~/.ssh/vpn-server-key ubuntu@<IP> 'sudo cat /etc/wireguard/clients/mobile1-qr.txt'
    ```
 
 ## Documentación
 
 - [Documentación de Terraform](./terraform/README.md)
-- Documentación de Ansible (próximamente)
+- [Documentación de Ansible](./ansible/README.md)
 
 ## Requisitos
 
 - AWS CLI configurado
 - Terraform >= 1.0
-- Ansible (para configuración del servidor)
-- Key pair de AWS (opcional, para SSH)
+- Ansible
+- Key pair de AWS (se crea automáticamente)
