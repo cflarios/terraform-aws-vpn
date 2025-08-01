@@ -21,7 +21,6 @@ variable "security_group_id" {
 variable "key_name" {
   description = "Nombre del key pair para SSH"
   type        = string
-  default     = null
 }
 
 variable "environment" {

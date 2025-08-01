@@ -24,7 +24,12 @@ output "security_group_id" {
   value       = module.security_group.security_group_id
 }
 
+output "key_pair_name" {
+  description = "Nombre del Key Pair creado en AWS"
+  value       = aws_key_pair.vpn_key.key_name
+}
+
 output "ssh_connection_command" {
-  description = "Comando para conectarse via SSH (requiere key pair)"
-  value       = var.key_name != null ? "ssh -i ${var.key_name}.pem ubuntu@${module.ec2.public_ip}" : "Key pair no configurado"
+  description = "Comando para conectarse via SSH"
+  value       = "ssh -i ~/.ssh/vpn-server-key ubuntu@${module.ec2.public_ip}"
 }

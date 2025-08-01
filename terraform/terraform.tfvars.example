@@ -13,6 +13,4 @@ public_subnet_cidr = "10.0.1.0/24"
 # Configuración de EC2
 instance_type = "t3.micro"
 
-# Opcional: Nombre del key pair para acceso SSH
-# Debes crear este key pair en AWS EC2 antes de usarlo
-# key_name = "mi-key-pair"
+# Nota: El key pair se crea automáticamente usando ~/.ssh/vpn-server-key.pub

@@ -31,39 +31,46 @@ terraform/
 
 1. **AWS CLI** configurado con credenciales válidas
 2. **Terraform** instalado (versión >= 1.0)
-3. **Key pair** en AWS (opcional, para acceso SSH)
+3. **SSH key** generada en `~/.ssh/vpn-server-key` (se crea automáticamente si no existe)
 
 ## Uso
 
-### 1. Configurar variables
+### 1. Generar SSH Key (si no existe)
+
+```bash
+# El proyecto espera que exista una clave SSH en ~/.ssh/vpn-server-key
+# Si no existe, puedes generarla con:
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/vpn-server-key -N "" -C "vpn-server-key"
+```
+
+### 2. Configurar variables
 
 ```bash
 # Copiar el archivo de ejemplo
 cp terraform.tfvars.example terraform.tfvars
 
 # Editar las variables según tus necesidades
-# Especialmente si quieres usar un key pair para SSH
 ```
 
-### 2. Inicializar Terraform
+### 3. Inicializar Terraform
 
 ```bash
 terraform init
 ```
 
-### 3. Planificar el despliegue
+### 4. Planificar el despliegue
 
 ```bash
 terraform plan
 ```
 
-### 4. Aplicar la configuración
+### 5. Aplicar la configuración
 
 ```bash
 terraform apply
 ```
 
-### 5. Ver outputs
+### 6. Ver outputs
 
 ```bash
 terraform output
@@ -72,7 +79,8 @@ terraform output
 ## Outputs importantes
 
 - **instance_public_ip**: Dirección IP pública de la instancia
-- **ssh_connection_command**: Comando para conectarse via SSH
+- **ssh_connection_command**: Comando completo para conectarse via SSH
+- **key_pair_name**: Nombre del key pair creado en AWS
 - **instance_public_dns**: DNS público de la instancia
 
 ## Verificar el despliegue
@@ -83,8 +91,11 @@ Una vez aplicada la configuración, puedes verificar que todo funciona:
 # Ver la IP pública
 terraform output instance_public_ip
 
-# Conectarse via SSH (si configuraste un key pair)
-ssh -i tu-key-pair.pem ubuntu@$(terraform output -raw instance_public_ip)
+# Ver el comando completo de SSH
+terraform output ssh_connection_command
+
+# Conectarse via SSH usando la clave generada
+ssh -i ~/.ssh/vpn-server-key ubuntu@$(terraform output -raw instance_public_ip)
 ```
 
 ## Limpiar recursos
@@ -102,7 +113,9 @@ Puedes modificar las variables en `terraform.tfvars` para:
 - Cambiar el tipo de instancia
 - Modificar los rangos de IP
 - Usar diferentes zonas de disponibilidad
-- Configurar un key pair para SSH
+- Cambiar el nombre del entorno
+
+**Nota**: La SSH key se lee automáticamente desde `~/.ssh/vpn-server-key.pub`
 
 ## Seguridad
 

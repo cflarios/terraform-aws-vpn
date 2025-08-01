@@ -13,7 +13,6 @@ provider "aws" {
   region = var.aws_region
 }
 
-# Obtener la AMI más reciente de Ubuntu
 data "aws_ami" "ubuntu" {
   most_recent = true
   owners      = ["099720109477"] # Canonical
@@ -26,6 +25,17 @@ data "aws_ami" "ubuntu" {
   filter {
     name   = "virtualization-type"
     values = ["hvm"]
+  }
+}
+
+# Key Pair para acceso SSH
+resource "aws_key_pair" "vpn_key" {
+  key_name   = "${var.environment}-vpn-key"
+  public_key = file("~/.ssh/vpn-server-key.pub")
+
+  tags = {
+    Name        = "${var.environment}-vpn-key"
+    Environment = var.environment
   }
 }
 
@@ -55,6 +65,6 @@ module "ec2" {
   instance_type     = var.instance_type
   subnet_id         = module.vpc.public_subnet_id
   security_group_id = module.security_group.security_group_id
-  key_name          = var.key_name
+  key_name          = aws_key_pair.vpn_key.key_name
   environment       = var.environment
 }
