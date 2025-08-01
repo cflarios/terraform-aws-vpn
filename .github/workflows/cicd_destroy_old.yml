@@ -83,7 +83,30 @@ jobs:
         with:
           terraform_version: "1.5.0"
 
-      - name: 🚀 Terraform Init with Remote Backend
+      - name: � Retrieve SSH Keys from Parameter Store
+        run: |
+          echo "🔑 Retrieving SSH keys for Terraform compatibility..."
+          mkdir -p ~/.ssh
+          
+          # Get private key
+          aws ssm get-parameter \
+            --name "/vpn/${{ github.event.inputs.environment }}/ssh-private-key" \
+            --with-decryption \
+            --query 'Parameter.Value' \
+            --output text > ~/.ssh/vpn-server-key
+          
+          # Get public key
+          aws ssm get-parameter \
+            --name "/vpn/${{ github.event.inputs.environment }}/ssh-public-key" \
+            --query 'Parameter.Value' \
+            --output text > ~/.ssh/vpn-server-key.pub
+          
+          chmod 600 ~/.ssh/vpn-server-key
+          chmod 644 ~/.ssh/vpn-server-key.pub
+          
+          echo "✅ SSH keys retrieved and placed for Terraform"
+
+      - name: �🚀 Terraform Init with Remote Backend
         working-directory: ./terraform
         run: |
           terraform init \
@@ -176,32 +199,3 @@ jobs:
           echo ""
           echo "💡 The backend infrastructure (S3 + DynamoDB) is preserved"
           echo "   for future deployments and other environments."
-
-      - name: 📊 Create Destruction Summary
-        run: |
-          cat >> $GITHUB_STEP_SUMMARY << EOF
-          # 🗑️ VPN Infrastructure Destroyed
-          
-          ## ✅ Destruction Complete
-          - **Environment**: ${{ github.event.inputs.environment }}
-          - **Status**: All resources successfully destroyed
-          - **Cost Impact**: No longer incurring charges
-          
-          ## 📋 Resources Destroyed
-          - EC2 Instance (WireGuard server)
-          - VPC and networking components
-          - Security Groups
-          - SSH Key Pairs
-          - Parameter Store entries
-          - Terraform state file
-          
-          ## 🔄 Next Steps
-          - You can redeploy anytime using the **"Deploy VPN Infrastructure"** workflow
-          - All configurations will be freshly generated on next deployment
-          - Remember to download new client configs after redeployment
-          
-          ## 💡 Tips
-          - Consider saving your WireGuard client configurations locally
-          - Document any custom settings for future deployments
-          - The backend infrastructure (S3 + DynamoDB) is preserved for efficiency
-          EOF

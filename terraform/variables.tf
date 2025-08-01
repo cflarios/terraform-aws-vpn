@@ -11,6 +11,12 @@ variable "environment" {
   default     = "dev"
 }
 
+variable "ssh_public_key" {
+  description = "SSH public key content for EC2 access"
+  type        = string
+  default     = ""
+}
+
 # Variables de VPC
 variable "vpc_cidr" {
   description = "CIDR block para la VPC"

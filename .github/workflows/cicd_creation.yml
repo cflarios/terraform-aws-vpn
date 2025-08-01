@@ -225,11 +225,17 @@ jobs:
 
       - name: 📋 Terraform Plan
         working-directory: ./terraform
-        run: terraform plan -out=tfplan
+        run: |
+          # Pass SSH public key as variable
+          export TF_VAR_ssh_public_key="$(cat ~/.ssh/vpn-server-key.pub)"
+          terraform plan -out=tfplan
 
       - name: ✅ Terraform Apply
         working-directory: ./terraform
-        run: terraform apply -auto-approve tfplan
+        run: |
+          # Pass SSH public key as variable
+          export TF_VAR_ssh_public_key="$(cat ~/.ssh/vpn-server-key.pub)"
+          terraform apply -auto-approve tfplan
 
       - name: 📤 Get Terraform Outputs
         id: terraform_output
