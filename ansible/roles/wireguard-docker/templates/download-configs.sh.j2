@@ -28,20 +28,20 @@ if [ -d "$CONFIG_DIR" ]; then
             # Configuración para escritorio
             if [ -f "$peer_dir/$peer_name.conf" ]; then
                 echo "📱 Peer $peer_name (archivo .conf):"
-                echo "   scp -i ~/.ssh/vpn-server-key ubuntu@{{ ansible_default_ipv4.address }}:$peer_dir$peer_name.conf ./"
+                echo "   scp -i ~/.ssh/vpn-server-key ubuntu@{{ ansible_facts['ec2_public_ipv4'] | default(hostvars[inventory_hostname]['ansible_host']) }}:$peer_dir$peer_name.conf ./"
             fi
             
             # QR Code para móvil
             if [ -f "$peer_dir/$peer_name.png" ]; then
                 echo "📱 Peer $peer_name (QR Code):"
-                echo "   scp -i ~/.ssh/vpn-server-key ubuntu@{{ ansible_default_ipv4.address }}:$peer_dir$peer_name.png ./"
+                echo "   scp -i ~/.ssh/vpn-server-key ubuntu@{{ ansible_facts['ec2_public_ipv4'] | default(hostvars[inventory_hostname]['ansible_host']) }}:$peer_dir$peer_name.png ./"
             fi
             echo ""
         fi
     done
     
     echo "🌍 Servidor HTTP para descarga (puerto 8080):"
-    echo "   http://{{ ansible_default_ipv4.address }}:8080"
+    echo "   http://{{ ansible_facts['ec2_public_ipv4'] | default(hostvars[inventory_hostname]['ansible_host']) }}:8080"
     echo ""
     echo "📊 Estado del contenedor:"
     docker ps | grep wireguard

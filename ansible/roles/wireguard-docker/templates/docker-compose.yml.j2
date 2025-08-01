@@ -10,7 +10,7 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ={{ wireguard.timezone }}
-      - SERVERURL={{ ansible_default_ipv4.address }}
+      - SERVERURL={{ ansible_facts['ec2_public_ipv4'] | default(hostvars[inventory_hostname]['ansible_host']) }}
       - SERVERPORT={{ wireguard.server_port }}
       - PEERS={{ wireguard.peers }}
       - PEERDNS={{ wireguard.peer_dns }}

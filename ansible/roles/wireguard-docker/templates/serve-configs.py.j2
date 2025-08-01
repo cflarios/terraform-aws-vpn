@@ -60,7 +60,7 @@ class WireGuardConfigHandler(http.server.SimpleHTTPRequestHandler):
                             list_content.append('</div>')
 
             list_content.append('<hr>')
-            list_content.append(f'<p><small>Server: {{ ansible_default_ipv4.address }}:8080 | WireGuard Docker Container</small></p>')
+            list_content.append(f'<p><small>Server: {{ ansible_facts["ec2_public_ipv4"] | default(hostvars[inventory_hostname]["ansible_host"]) }}:8080 | WireGuard Docker Container</small></p>')
             list_content.append('</body></html>')
             
             encoded = '\n'.join(list_content).encode('utf-8', 'surrogateescape')
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     
     print(f"🌐 Starting WireGuard config server on port {PORT}")
     print(f"📁 Serving files from: {CONFIG_DIR}")
-    print(f"🔗 Access at: http://{{ ansible_default_ipv4.address }}:{PORT}")
+    print(f"🔗 Access at: http://{{ ansible_facts['ec2_public_ipv4'] | default(hostvars[inventory_hostname]['ansible_host']) }}:{PORT}")
     
     with socketserver.TCPServer(("", PORT), WireGuardConfigHandler) as httpd:
         try:
