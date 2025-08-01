@@ -37,7 +37,20 @@ Infraestructura como código para desplegar un servidor VPN en AWS usando Terraf
 - Servidor web integrado para descarga de configuraciones (puerto 8080)
 - Firewall configurado (UFW)
 
-## Inicio rápido
+## 🚀 Quick Start
+
+### ⚠️ CONFIGURACIÓN REQUERIDA PRIMERO
+
+**CRÍTICO**: Antes de usar los workflows, debes configurar el backend de Terraform.
+
+📖 **Lee primero**: [`SETUP-BACKEND.md`](./SETUP-BACKEND.md) - Configuración obligatoria
+
+### Pasos rápidos:
+1. 🏗️ Ejecuta `./scripts/setup-backend.sh` (una sola vez)
+2. 🔐 Configura GitHub Secrets (AWS credentials + backend info)
+3. 🚀 Usa los workflows de GitHub Actions
+
+---
 
 ### 🤖 Opción 1: Automatizado con GitHub Actions (Recomendado)
 

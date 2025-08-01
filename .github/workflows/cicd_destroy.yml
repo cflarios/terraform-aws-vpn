@@ -3,34 +3,33 @@ name: 🗑️ Destroy VPN Infrastructure
 on:
   workflow_dispatch:
     inputs:
-      confirmation:
-        description: 'Type "DESTROY" to confirm destruction'
-        required: true
-        type: string
       environment:
-        description: 'Environment name to destroy'
+        description: 'Environment to destroy'
         required: true
         default: 'dev'
+        type: string
+      confirmation:
+        description: 'Type DESTROY to confirm'
+        required: true
         type: string
 
 env:
   AWS_REGION: us-east-1
-  TF_VAR_environment: ${{ github.event.inputs.environment }}
 
 jobs:
-  destroy-infrastructure:
-    name: 🗑️ Destroy Infrastructure
+  validate-and-destroy:
+    name: 🗑️ Validate and Destroy Infrastructure
     runs-on: ubuntu-latest
     
     steps:
       - name: ✋ Validate Confirmation
         run: |
           if [ "${{ github.event.inputs.confirmation }}" != "DESTROY" ]; then
-            echo "❌ Invalid confirmation. You must type 'DESTROY' to proceed."
-            echo "🛡️ This is a safety measure to prevent accidental destruction."
+            echo "❌ ERROR: You must type exactly 'DESTROY' to confirm destruction"
+            echo "   You typed: '${{ github.event.inputs.confirmation }}'"
             exit 1
           fi
-          echo "✅ Confirmation validated. Proceeding with destruction..."
+          echo "✅ Confirmation validated"
 
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
@@ -42,96 +41,124 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: 🔍 Get Backend Configuration from Parameter Store
+        id: get_backend
+        run: |
+          # Try to get backend configuration from Parameter Store
+          echo "🔍 Looking for backend configuration..."
+          
+          if aws ssm get-parameter --name "/vpn/${{ github.event.inputs.environment }}/backend-bucket" 2>/dev/null; then
+            BACKEND_BUCKET=$(aws ssm get-parameter \
+              --name "/vpn/${{ github.event.inputs.environment }}/backend-bucket" \
+              --query 'Parameter.Value' \
+              --output text)
+            
+            BACKEND_TABLE=$(aws ssm get-parameter \
+              --name "/vpn/${{ github.event.inputs.environment }}/backend-table" \
+              --query 'Parameter.Value' \
+              --output text)
+            
+            echo "✅ Found backend configuration:"
+            echo "   🪣 S3 Bucket: $BACKEND_BUCKET"
+            echo "   🗄️ DynamoDB Table: $BACKEND_TABLE"
+            
+            echo "backend_bucket=$BACKEND_BUCKET" >> $GITHUB_OUTPUT
+            echo "backend_table=$BACKEND_TABLE" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Backend configuration not found in Parameter Store"
+            echo "   This could mean:"
+            echo "   1. No infrastructure was deployed for environment: ${{ github.event.inputs.environment }}"
+            echo "   2. The deployment failed before storing backend config"
+            echo "   3. The backend was already cleaned up"
+            
+            # Try to find any existing buckets with our naming pattern
+            echo "🔍 Searching for existing terraform state buckets..."
+            aws s3api list-buckets --query 'Buckets[?starts_with(Name, `terraform-state-vpn-`)].Name' --output text
+            
+            exit 1
+          fi
+
       - name: 🏗️ Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.5.0"
 
-      - name: 🔑 Generate Temporary SSH Key (for state consistency)
+      - name: 🚀 Terraform Init with Remote Backend
+        working-directory: ./terraform
         run: |
-          mkdir -p ~/.ssh
-          ssh-keygen -t rsa -b 4096 -f ~/.ssh/vpn-server-key -N "" -C "github-actions-destroy-key"
-          chmod 600 ~/.ssh/vpn-server-key
-          chmod 644 ~/.ssh/vpn-server-key.pub
+          terraform init \
+            -backend-config="bucket=${{ steps.get_backend.outputs.backend_bucket }}" \
+            -backend-config="key=vpn-${{ github.event.inputs.environment }}/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="encrypt=true" \
+            -backend-config="dynamodb_table=${{ steps.get_backend.outputs.backend_table }}"
 
-      - name: 🚀 Terraform Init
+      - name: 📋 Terraform Plan (Destroy)
         working-directory: ./terraform
-        run: terraform init
-
-      - name: 📋 Terraform Plan Destroy
-        working-directory: ./terraform
-        run: terraform plan -destroy -out=destroy-plan
+        run: |
+          export TF_VAR_environment="${{ github.event.inputs.environment }}"
+          terraform plan -destroy -out=destroy-plan
 
       - name: 🗑️ Terraform Destroy
         working-directory: ./terraform
-        run: terraform apply -auto-approve destroy-plan
+        run: |
+          export TF_VAR_environment="${{ github.event.inputs.environment }}"
+          terraform apply -auto-approve destroy-plan
 
-      - name: ✅ Cleanup Verification
+      - name: 🧹 Cleanup Parameter Store
+        run: |
+          echo "🧹 Cleaning up Parameter Store entries..."
+          
+          # List all parameters for this environment
+          PARAMETERS=$(aws ssm get-parameters-by-path \
+            --path "/vpn/${{ github.event.inputs.environment }}" \
+            --query 'Parameters[].Name' \
+            --output text)
+          
+          if [ -n "$PARAMETERS" ]; then
+            echo "Found parameters to delete: $PARAMETERS"
+            for param in $PARAMETERS; do
+              echo "Deleting parameter: $param"
+              aws ssm delete-parameter --name "$param" || echo "Failed to delete $param"
+            done
+          else
+            echo "No parameters found to delete"
+          fi
+
+      - name: 🧹 Cleanup Terraform State (Optional)
+        run: |
+          echo "🧹 Optionally cleaning up Terraform state..."
+          echo "⚠️  NOTE: This will delete the state file. Only do this if you're sure."
+          echo "   State file location: s3://${{ steps.get_backend.outputs.backend_bucket }}/vpn-${{ github.event.inputs.environment }}/terraform.tfstate"
+          
+          # Remove the specific state file for this environment
+          aws s3 rm "s3://${{ steps.get_backend.outputs.backend_bucket }}/vpn-${{ github.event.inputs.environment }}/terraform.tfstate" || echo "State file not found or already deleted"
+          
+          # Check if this was the last environment using this backend
+          REMAINING_STATES=$(aws s3 ls "s3://${{ steps.get_backend.outputs.backend_bucket }}/vpn-" | wc -l)
+          if [ "$REMAINING_STATES" -eq 0 ]; then
+            echo "💡 This was the last environment. You may want to clean up the backend infrastructure:"
+            echo "   S3 Bucket: ${{ steps.get_backend.outputs.backend_bucket }}"
+            echo "   DynamoDB Table: ${{ steps.get_backend.outputs.backend_table }}"
+            echo "   (These are kept to avoid affecting other environments)"
+          fi
+
+      - name: ✅ Destruction Complete
         run: |
           echo "🎉 Infrastructure destroyed successfully!"
-          echo "======================================="
+          echo "════════════════════════════════════════"
+          echo "🌍 Environment: ${{ github.event.inputs.environment }}"
+          echo "🗑️  Status: DESTROYED"
+          echo "💰 Cost: $0 (no resources running)"
+          echo "════════════════════════════════════════"
           echo ""
-          echo "✅ All AWS resources have been terminated"
-          echo "💰 You are no longer being charged for VPN infrastructure"
+          echo "✅ What was cleaned up:"
+          echo "  • EC2 instance"
+          echo "  • VPC and networking"
+          echo "  • Security groups"
+          echo "  • SSH key pairs"
+          echo "  • Parameter Store entries"
+          echo "  • Terraform state file"
           echo ""
-          echo "📋 What was destroyed:"
-          echo "  - EC2 Instance"
-          echo "  - VPC and related networking"
-          echo "  - Security Groups" 
-          echo "  - Key Pairs"
-          echo ""
-          echo "🔄 You can redeploy anytime using the 'Deploy VPN Infrastructure' workflow"
-
-      - name: 📊 Create Destruction Summary
-        run: |
-          cat >> $GITHUB_STEP_SUMMARY << EOF
-          # 🗑️ VPN Infrastructure Destroyed
-          
-          ## ✅ Destruction Complete
-          - **Environment**: ${{ github.event.inputs.environment }}
-          - **Status**: All resources successfully destroyed
-          - **Cost Impact**: No longer incurring charges
-          
-          ## 📋 Resources Destroyed
-          - EC2 Instance (WireGuard server)
-          - VPC and networking components
-          - Security Groups
-          - SSH Key Pairs
-          
-          ## 🔄 Next Steps
-          - You can redeploy anytime using the **"Deploy VPN Infrastructure"** workflow
-          - All configurations will be freshly generated on next deployment
-          - Remember to download new client configs after redeployment
-          
-          ## 💡 Tips
-          - Consider saving your WireGuard client configurations locally
-          - Document any custom settings for future deployments
-          EOF
-
-  cleanup-artifacts:
-    name: 🧹 Cleanup Artifacts
-    runs-on: ubuntu-latest
-    needs: destroy-infrastructure
-    if: always()
-    
-    steps:
-      - name: 🧹 Clean up old artifacts
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: context.runId,
-            });
-            
-            for (const artifact of artifacts.data.artifacts) {
-              if (artifact.name === 'infrastructure-info') {
-                await github.rest.actions.deleteArtifact({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  artifact_id: artifact.id,
-                });
-                console.log(`Deleted artifact: ${artifact.name}`);
-              }
-            }
+          echo "💡 The backend infrastructure (S3 + DynamoDB) is preserved"
+          echo "   for future deployments and other environments."
