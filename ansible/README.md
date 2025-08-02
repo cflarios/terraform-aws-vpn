@@ -1,212 +1,212 @@
-# Ansible WireGuard Docker Configuration
+# 🐳 Ansible WireGuard Docker Configuration
 
-Este directorio contiene playbooks de Ansible para configurar automáticamente un servidor WireGuard VPN usando Docker en tu instancia EC2.
+This directory contains Ansible playbooks to automatically configure a WireGuard VPN server using Docker on your EC2 instance.
 
-## 📋 Características
+## ✨ Features
 
-- **Instalación automática** de Docker y docker-compose
-- **Contenedor WireGuard** usando imagen linuxserver/wireguard
-- **Configuración automática** del servidor con la IP pública
-- **Generación automática** de clientes (peers) con QR codes
-- **Servidor web integrado** para descarga fácil de configuraciones (puerto 8080)
-- **Firewall configurado** (UFW) con reglas de seguridad
-- **Sin configuración manual** de claves o archivos
+- **Automatic installation** of Docker and docker-compose
+- **WireGuard container** using linuxserver/wireguard image
+- **Automatic configuration** of server with public IP
+- **Automatic generation** of clients (peers) with QR codes
+- **Integrated web server** for easy configuration downloads (port 8080)
+- **Configured firewall** (UFW) with security rules
+- **No manual configuration** of keys or files required
 
-## 🗂️ Estructura
+## � Structure
 
 ```
 ansible/
-├── site.yml                    # Playbook principal
-├── inventory.ini               # Inventario de servidores
-├── ansible.cfg                 # Configuración de Ansible
-├── deploy.sh                   # Script de deploy automatizado
+├── site.yml                    # Main playbook
+├── inventory.ini               # Server inventory
+├── ansible.cfg                 # Ansible configuration
+├── deploy.sh                   # Automated deploy script
 ├── group_vars/
-│   └── all.yml                 # Variables globales
+│   └── all.yml                 # Global variables
 └── roles/
     └── wireguard-docker/
-        ├── tasks/              # Tareas de instalación Docker + WireGuard
+        ├── tasks/              # Docker + WireGuard installation tasks
         ├── templates/          # Templates (docker-compose, scripts)
-        └── handlers/           # Handlers para servicios
+        └── handlers/           # Service handlers
 ```
 
-## 🚀 Uso rápido
+## 🚀 Quick Usage
 
-### 1. Deploy automatizado
+### 1. Automated Deploy
 
 ```bash
-# Usar el script de deploy (recomendado)
-./deploy.sh <IP_DEL_SERVIDOR>
+# Use deploy script (recommended)
+./deploy.sh <SERVER_IP>
 
-# Ejemplo:
+# Example:
 ./deploy.sh 54.123.456.789
 ```
 
-### 2. Acceder a configuraciones
+### 2. Access Configurations
 
 ```bash
-# Servidor web para descargas (¡MUY FÁCIL!)
-http://<IP_DEL_SERVIDOR>:8080
+# Web server for downloads (VERY EASY!)
+http://<SERVER_IP>:8080
 
-# Descargar configuración específica por SCP
+# Download specific configuration via SCP
 scp -i ~/.ssh/vpn-server-key ubuntu@<IP>:/root/wireguard/peer1/peer1.conf .
 ```
 
-## 📋 Requisitos previos
+## 📋 Prerequisites
 
-1. **Sistema compatible**:
+1. **Compatible system**:
    - Linux (Ubuntu/Debian/CentOS/RHEL/Fedora)
-   - macOS (con Homebrew)
-   - **Ansible se instalará automáticamente** si no está presente
+   - macOS (with Homebrew)
+   - **Ansible will be automatically installed** if not present
 
-2. **Clave SSH configurada**:
-   - Debe existir en `~/.ssh/vpn-server-key`
-   - Si no existe: `ssh-keygen -t rsa -b 4096 -f ~/.ssh/vpn-server-key`
+2. **SSH key configured**:
+   - Must exist at `~/.ssh/vpn-server-key`
+   - If it doesn't exist: `ssh-keygen -t rsa -b 4096 -f ~/.ssh/vpn-server-key`
 
-3. **Instancia EC2 ejecutándose**:
-   - Con Ubuntu 22.04 LTS
-   - Puertos 22, 80, 443, 51820, 8080 abiertos
-   - Acceso SSH configurado
+3. **Running EC2 instance**:
+   - With Ubuntu 22.04 LTS
+   - Ports 22, 80, 443, 51820, 8080 open
+   - SSH access configured
 
-## ⚙️ Configuración
+## ⚙️ Configuration
 
-### Variables principales (group_vars/all.yml)
+### Main variables (group_vars/all.yml)
 
 ```yaml
 wireguard:
-  internal_subnet: "10.13.13.0"    # Red interna de WireGuard
-  server_port: 51820               # Puerto UDP de WireGuard
-  peers: 3                         # Número de clientes a generar
-  peer_dns: "auto"                 # DNS para clientes
-  timezone: "America/Bogota"       # Zona horaria del contenedor
+  internal_subnet: "10.13.13.0"    # WireGuard internal network
+  server_port: 51820               # WireGuard UDP port
+  peers: 3                         # Number of clients to generate
+  peer_dns: "auto"                 # DNS for clients
+  timezone: "America/Bogota"       # Container timezone
 
 docker:
-  compose_version: "2.24.0"        # Versión de docker-compose
+  compose_version: "2.24.0"        # docker-compose version
 ```
 
-### Agregar más clientes
+### Add more clients
 
-1. Edita `group_vars/all.yml`
-2. Cambia el número de peers:
+1. Edit `group_vars/all.yml`
+2. Change the number of peers:
    ```yaml
-   peers: 5  # Genera 5 clientes en lugar de 3
+   peers: 5  # Generate 5 clients instead of 3
    ```
-3. Re-ejecuta el playbook: `ansible-playbook site.yml`
+3. Re-run the playbook: `ansible-playbook site.yml`
 
-## 📱 Uso después del deploy
+## 📱 Usage After Deploy
 
-### 🌐 Servidor web para descargas (¡NUEVO!)
+### 🌐 Web Server for Downloads (NEW!)
 ```bash
-# Abrir en navegador
-http://<IP_SERVIDOR>:8080
+# Open in browser
+http://<SERVER_IP>:8080
 
-# Lista todas las configuraciones con descargas directas
-# Incluye archivos .conf para desktop y .png (QR) para móvil
+# Lists all configurations with direct downloads
+# Includes .conf files for desktop and .png (QR) for mobile
 ```
 
-### Ver estado del contenedor Docker
+### View Docker Container Status
 ```bash
-ssh -i ~/.ssh/vpn-server-key ubuntu@<IP_SERVIDOR> 'sudo docker ps'
-ssh -i ~/.ssh/vpn-server-key ubuntu@<IP_SERVIDOR> 'sudo docker logs wireguard'
+ssh -i ~/.ssh/vpn-server-key ubuntu@<SERVER_IP> 'sudo docker ps'
+ssh -i ~/.ssh/vpn-server-key ubuntu@<SERVER_IP> 'sudo docker logs wireguard'
 ```
 
-### Descargar configuración específica por SCP
+### Download Specific Configuration via SCP
 ```bash
-# Listar configuraciones disponibles
-ssh -i ~/.ssh/vpn-server-key ubuntu@<IP_SERVIDOR> 'sudo ls /root/wireguard/peer*/'
+# List available configurations
+ssh -i ~/.ssh/vpn-server-key ubuntu@<SERVER_IP> 'sudo ls /root/wireguard/peer*/'
 
-# Descargar configuración
-scp -i ~/.ssh/vpn-server-key ubuntu@<IP_SERVIDOR>:/root/wireguard/peer1/peer1.conf .
+# Download configuration
+scp -i ~/.ssh/vpn-server-key ubuntu@<SERVER_IP>:/root/wireguard/peer1/peer1.conf .
 ```
 
-### Ver script de ayuda
+### View Help Script
 ```bash
-ssh -i ~/.ssh/vpn-server-key ubuntu@<IP_SERVIDOR> 'sudo /root/download-configs.sh'
+ssh -i ~/.ssh/vpn-server-key ubuntu@<SERVER_IP> 'sudo /root/download-configs.sh'
 ```
 
-## 🔧 Configuración de clientes
+## 🔧 Client Configuration
 
 ### Desktop (Windows/Mac/Linux)
-1. Instala WireGuard cliente
-2. Ve a `http://<IP_SERVIDOR>:8080` y descarga el archivo `.conf`
-3. Importa el archivo `.conf` en WireGuard
-4. Conecta
+1. Install WireGuard client
+2. Go to `http://<SERVER_IP>:8080` and download the `.conf` file
+3. Import the `.conf` file in WireGuard
+4. Connect
 
-### Móvil (Android/iOS)
-1. Instala WireGuard app
-2. Ve a `http://<IP_SERVIDOR>:8080` y descarga el archivo `.png` (QR code)
-3. En la app, escanea el código QR desde la imagen descargada
-4. Conecta
+### Mobile (Android/iOS)
+1. Install WireGuard app
+2. Go to `http://<SERVER_IP>:8080` and download the `.png` file (QR code)
+3. In the app, scan the QR code from the downloaded image
+4. Connect
 
-## 🔒 Seguridad
+## 🔒 Security
 
-El playbook configura automáticamente:
+The playbook automatically configures:
 
-- **Docker container** aislado para WireGuard
-- **Firewall UFW** con reglas específicas
-- **Claves únicas** generadas automáticamente por el contenedor
-- **Servidor web temporal** en puerto 8080 (puedes cerrarlo después)
-- **NAT automático** configurado por el contenedor
+- **Isolated Docker container** for WireGuard
+- **UFW firewall** with specific rules
+- **Unique keys** automatically generated by the container
+- **Temporary web server** on port 8080 (you can close it later)
+- **Automatic NAT** configured by the container
 
 ## 🛠️ Troubleshooting
 
-### Error de conectividad SSH
+### SSH Connectivity Error
 ```bash
-# Verificar conectividad detallada
+# Verify detailed connectivity
 ansible vpn_servers -m ping -vvv
 ```
 
-### Contenedor Docker no inicia
+### Docker Container Won't Start
 ```bash
-# Verificar logs del contenedor
+# Check container logs
 ssh -i ~/.ssh/vpn-server-key ubuntu@<IP> 'sudo docker logs wireguard'
 
-# Reiniciar contenedor
+# Restart container
 ssh -i ~/.ssh/vpn-server-key ubuntu@<IP> 'cd /root/docker-wireguard && sudo docker-compose restart'
 ```
 
-### No se pueden descargar configuraciones
+### Cannot Download Configurations
 ```bash
-# Verificar que el puerto 8080 esté abierto
-# Verificar que el servidor HTTP esté corriendo
+# Verify port 8080 is open
+# Verify HTTP server is running
 ssh -i ~/.ssh/vpn-server-key ubuntu@<IP> 'sudo netstat -tlnp | grep 8080'
 
-# Reiniciar servidor de configuraciones
+# Restart configuration server
 ssh -i ~/.ssh/vpn-server-key ubuntu@<IP> 'sudo pkill -f serve-configs.py && cd /root/wireguard && nohup python3 /root/serve-configs.py > /var/log/config-server.log 2>&1 &'
 ```
 
-### Cliente no se conecta
-- Verificar que el puerto 51820 UDP esté abierto en AWS Security Group
-- Verificar la configuración del cliente
-- Verificar logs del contenedor: `sudo docker logs wireguard`
+### Client Won't Connect
+- Verify UDP port 51820 is open in AWS Security Group
+- Verify client configuration
+- Check container logs: `sudo docker logs wireguard`
 
-## 🔄 Comandos útiles
+## 🔄 Useful Commands
 
 ```bash
-# Ver estado del contenedor
+# View container status
 sudo docker ps
 
-# Ver logs del contenedor
+# View container logs
 sudo docker logs wireguard -f
 
-# Reiniciar WireGuard
+# Restart WireGuard
 cd /root/docker-wireguard && sudo docker-compose restart
 
-# Ver configuraciones generadas
+# View generated configurations
 sudo ls -la /root/wireguard/peer*/
 
-# Verificar firewall
+# Verify firewall
 sudo ufw status
 
-# Acceder al contenedor (si necesitas debug)
+# Access container (if you need debugging)
 sudo docker exec -it wireguard bash
 ```
 
-## 🌟 Ventajas del setup con Docker
+## 🌟 Docker Setup Advantages
 
-- ✅ **Instalación más rápida** y confiable
-- ✅ **Sin configuración manual** de claves o archivos
-- ✅ **Aislamiento** del sistema host
-- ✅ **Actualizaciones fáciles** del contenedor
-- ✅ **Servidor web integrado** para descargas
-- ✅ **Configuración automática** de todo el stack
-- ✅ **Portabilidad** entre diferentes sistemas
+- ✅ **Faster and more reliable** installation
+- ✅ **No manual configuration** of keys or files
+- ✅ **Isolation** from host system
+- ✅ **Easy updates** of the container
+- ✅ **Integrated web server** for downloads
+- ✅ **Automatic configuration** of the entire stack
+- ✅ **Portability** between different systems

@@ -1,202 +1,240 @@
-# 🚀 GitHub Actions Workflows para VPN
+# 🚀 GitHub Actions Workflows for VPN
 
-Este directorio contiene workflows de GitHub Actions para gestión automatizada de la infraestructura VPN temporal.
+This directory contains GitHub Actions workflows for automated management of temporary VPN infrastructure.
 
-## 📋 Workflows Disponibles
+## 📋 Available Workflows
 
 ### 1. 🚀 Deploy VPN Infrastructure (`cicd_creation.yml`)
-**Propósito**: Despliega completamente la infraestructura VPN de forma temporal
+**Purpose**: Deploys complete VPN infrastructure temporarily
 
 **Trigger**: Manual (workflow_dispatch)
 
-**Parámetros configurables**:
-- **Environment**: Nombre del entorno (dev, staging, prod)
-- **Instance Type**: Tipo de instancia EC2 (t3.micro, t3.small, t3.medium)
-- **WireGuard Peers**: Número de clientes VPN a generar (1-10)
+**Configurable parameters**:
+- **Environment**: Environment name (dev, staging, prod)
+- **Instance Type**: EC2 instance type (t3.micro, t3.small, t3.medium)
+- **WireGuard Peers**: Number of VPN clients to generate (1-10)
 
-**Proceso**:
-1. 🏗️ **Terraform**: Crea infraestructura AWS (VPC, EC2, Security Groups)
-2. 🔑 **SSH Key**: Genera claves automáticamente
-3. ⏳ **Espera**: Aguarda a que la instancia esté lista
-4. 🐳 **Ansible**: Configura Docker + WireGuard
-5. 📱 **Configuraciones**: Genera clientes VPN automáticamente
-6. 🌐 **Servidor Web**: Activa servidor para descargar configs (puerto 8080)
+**Process**:
+1. 🏗️ **Terraform**: Creates AWS infrastructure (VPC, EC2, Security Groups)
+2. 🔑 **SSH Key**: Generates keys automatically
+3. ⏳ **Wait**: Waits for instance to be ready
+4. 🐳 **Ansible**: Configures Docker + WireGuard
+5. 📱 **Configurations**: Generates VPN clients automatically
+6. 🌐 **Web Server**: Activates server to download configs (port 8080)
 
 **Outputs**:
-- IP pública de la instancia
-- URL del servidor web de configuraciones
-- Instrucciones de acceso SSH
+- Public IP of the instance
+- Configuration web server URL
+- SSH access instructions
 
 ### 2. 🗑️ Destroy VPN Infrastructure (`cicd_destroy.yml`)
-**Propósito**: Destruye completamente la infraestructura para ahorrar costos
+**Purpose**: Completely destroys infrastructure to save costs
 
 **Trigger**: Manual (workflow_dispatch)
 
-**Parámetros**:
-- **Confirmation**: Debes escribir "DESTROY" para confirmar
-- **Environment**: Nombre del entorno a destruir
+**Parameters**:
+- **Confirmation**: You must type "DESTROY" to confirm
+- **Environment**: Name of environment to destroy
 
-**Proceso**:
-1. ✋ **Validación**: Confirma que realmente quieres destruir
-2. 🗑️ **Terraform Destroy**: Elimina todos los recursos AWS
-3. 🧹 **Cleanup**: Limpia artefactos y datos temporales
+**Process**:
+1. ✋ **Validation**: Confirms you really want to destroy
+2. 🗑️ **Terraform Destroy**: Removes all AWS resources
+3. 🧹 **Cleanup**: Cleans artifacts and temporary data
 
-## 🔧 Configuración Inicial
+## 🔧 Initial Setup
 
-### 1. Secrets de GitHub
-Debes configurar estos secrets en tu repositorio GitHub:
+### 1. GitHub Secrets
+You must configure these secrets in your GitHub repository:
 
 ```
 Settings → Secrets and variables → Actions → New repository secret
 ```
 
-**Secrets requeridos**:
-- `AWS_ACCESS_KEY_ID`: Tu AWS Access Key ID
-- `AWS_SECRET_ACCESS_KEY`: Tu AWS Secret Access Key
+**Required secrets**:
+- `AWS_ACCESS_KEY_ID`: Your AWS Access Key ID
+- `AWS_SECRET_ACCESS_KEY`: Your AWS Secret Access Key
 
-### 2. Permisos AWS
-Tu usuario AWS debe tener permisos para:
-- EC2 (crear/eliminar instancias, security groups, key pairs)
-- VPC (crear/eliminar VPCs, subnets, internet gateways)
-- IAM (si usas roles específicos)
+### 2. AWS Permissions
+Your AWS user must have permissions for:
+- EC2 (create/delete instances, security groups, key pairs)
+- VPC (create/delete VPCs, subnets, internet gateways)
+- S3 (for Terraform state storage)
+- DynamoDB (for state locking)
+- Systems Manager Parameter Store (for secure storage)
 
-### 3. Permisos del Repositorio
-Los workflows necesitan:
-- `contents: read` - Para leer el código
-- `actions: write` - Para gestionar artefactos
-- `id-token: write` - Para AWS (si usas OIDC)
+### 3. Repository Permissions
+The workflows need:
+- `contents: read` - To read the code
+- `actions: write` - To manage artifacts
+- `id-token: write` - For AWS (if using OIDC)
 
-## 🚀 Cómo Usar
+## 🚀 How to Use
 
-### Desplegar VPN (Uso Temporal)
+### Deploy VPN (Temporary Use)
 
-1. **Ir a GitHub Actions**:
+1. **Go to GitHub Actions**:
    ```
-   Tu Repositorio → Actions → "Deploy VPN Infrastructure"
+   Your Repository → Actions → "Deploy VPN Infrastructure"
    ```
 
-2. **Configurar parámetros**:
-   - Environment: `dev` (o tu preferencia)
-   - Instance Type: `t3.micro` (más barato)
-   - WireGuard Peers: `3` (número de dispositivos)
+2. **Configure parameters**:
+   - Environment: `dev` (or your preference)
+   - Instance Type: `t3.micro` (cheapest)
+   - WireGuard Peers: `3` (number of devices)
 
-3. **Ejecutar workflow**:
+3. **Run workflow**:
    - Click "Run workflow"
-   - Espera ~5-10 minutos
+   - Wait ~5-10 minutes
 
-4. **Obtener configuraciones**:
-   - Al terminar, verás la IP pública en el summary
-   - Ve a `http://TU_IP_PUBLICA:8080`
-   - Descarga archivos `.conf` para desktop
-   - Descarga archivos `.png` (QR) para móviles
+4. **Get configurations**:
+   - When finished, you'll see the public IP in the summary
+   - Go to `http://YOUR_PUBLIC_IP:8080`
+   - Download `.conf` files for desktop
+   - Download `.png` files (QR) for mobile
 
-### Conectar Dispositivos
+### Connect Devices
 
 #### Desktop (Windows/Mac/Linux)
-1. Instala WireGuard cliente
-2. Descarga archivo `.conf` desde el servidor web
-3. Importa configuración
-4. ¡Conecta!
+1. Install WireGuard client
+2. Download `.conf` file from web server
+3. Import configuration
+4. Connect!
 
-#### Móvil (Android/iOS)
-1. Instala WireGuard app
-2. Descarga imagen QR desde el servidor web
-3. Escanea QR desde la imagen guardada
-4. ¡Conecta!
+#### Mobile (Android/iOS)
+1. Install WireGuard app
+2. Download QR image from web server
+3. Scan QR from saved image
+4. Connect!
 
-### Destruir VPN (Ahorrar Costos)
+### Destroy VPN (Save Costs)
 
-1. **Ir a GitHub Actions**:
+1. **Go to GitHub Actions**:
    ```
-   Tu Repositorio → Actions → "Destroy VPN Infrastructure"
+   Your Repository → Actions → "Destroy VPN Infrastructure"
    ```
 
-2. **Confirmar destrucción**:
-   - Confirmation: Escribe exactamente `DESTROY`
-   - Environment: Debe coincidir con el desplegado
+2. **Confirm destruction**:
+   - Confirmation: Type exactly `DESTROY`
+   - Environment: Must match the deployed one
 
-3. **Ejecutar workflow**:
+3. **Run workflow**:
    - Click "Run workflow"
-   - Espera ~3-5 minutos
+   - Wait ~3-5 minutes
 
-4. **Verificar**:
-   - Todos los recursos AWS eliminados
-   - Sin más costos
+4. **Verify**:
+   - All AWS resources deleted
+   - No more costs
 
-## 💰 Consideraciones de Costos
+## 💰 Cost Considerations
 
-### Instancia EC2 t3.micro
-- **Costo aprox**: $0.0104/hora (~$0.25/día)
-- **Free Tier**: 750 horas gratis/mes para nuevas cuentas AWS
+### EC2 t3.micro Instance
+- **Approx cost**: $0.0104/hour (~$0.25/day)
+- **Free Tier**: 750 hours free/month for new AWS accounts
 
-### Otros recursos
-- VPC, Security Groups, Key Pairs: **GRATIS**
-- Transferencia de datos: Mínima para VPN personal
+### Other Resources
+- VPC, Security Groups, Key Pairs: **FREE**
+- Data transfer: Minimal for personal VPN
 
-### ⚠️ Importante
-- **SIEMPRE destruye** la infraestructura cuando termines
-- Usar solo cuando necesites VPN
-- Monitorea costos en AWS Console
+### ⚠️ Important
+- **ALWAYS destroy** infrastructure when done
+- Use only when you need VPN
+- Monitor costs in AWS Console
 
-## 🔄 Flujo de Trabajo Típico
+## 🔄 Typical Workflow
 
 ```bash
-# Viernes por la noche - Necesito VPN para el fin de semana
+# Friday night - I need VPN for the weekend
 1. GitHub → Actions → "Deploy VPN Infrastructure" → Run
-2. Esperar 10 minutos
-3. Ir a http://IP:8080 y descargar configuraciones
-4. Conectar dispositivos
-5. Usar VPN todo el fin de semana
+2. Wait 10 minutes
+3. Go to http://IP:8080 and download configurations
+4. Connect devices
+5. Use VPN all weekend
 
-# Lunes por la mañana - Ya no necesito VPN
+# Monday morning - I don't need VPN anymore
 1. GitHub → Actions → "Destroy VPN Infrastructure" 
 2. Confirmation: "DESTROY" → Run
-3. Esperar 5 minutos
-4. ✅ Sin costos hasta la próxima vez
+3. Wait 5 minutes
+4. ✅ No costs until next time
 ```
 
 ## 🛠️ Troubleshooting
 
-### Workflow falla en Terraform
-- Verificar que los secrets AWS estén configurados
-- Revisar permisos del usuario AWS
-- Verificar limits de EC2 en tu región
+### Workflow Fails in Terraform
+- Verify AWS secrets are configured
+- Check AWS user permissions
+- Verify EC2 limits in your region
 
-### No puedo conectarme a la VPN
-- Verificar que descargaste la configuración correcta
-- Comprobar que el Security Group tiene puerto 51820 abierto
-- Verificar que el contenedor WireGuard esté corriendo
+### Can't Connect to VPN
+- Verify you downloaded the correct configuration
+- Check that Security Group has port 51820 open
+- Verify WireGuard container is running
 
-### El servidor web no responde
-- Verificar que el puerto 8080 esté abierto en Security Group
-- SSH a la instancia y verificar: `sudo docker logs wireguard`
-- Reiniciar contenedor: `sudo docker-compose restart`
+### Web Server Not Responding
+- Verify port 8080 is open in Security Group
+- SSH to instance and check: `sudo docker logs wireguard`
+- Restart container: `sudo docker-compose restart`
 
-### Costos inesperados
-- Verificar que destruiste la infraestructura anterior
-- Revisar AWS Cost Explorer
-- Configurar AWS Billing Alerts
+### Unexpected Costs
+- Verify you destroyed previous infrastructure
+- Check AWS Cost Explorer
+- Set up AWS Billing Alerts
 
-## 📊 Monitoreo
+## 📊 Monitoring
 
-### Logs de GitHub Actions
-- Cada paso del workflow está logueado
-- Outputs importantes se muestran en el summary
-- Los errores muestran detalles específicos
+### GitHub Actions Logs
+- Each workflow step is logged
+- Important outputs shown in summary
+- Errors show specific details
 
-### Logs de AWS
-- CloudTrail: Auditoría de cambios
-- EC2 Console: Estado de instancias
-- VPC Console: Configuración de red
+### AWS Logs
+- CloudTrail: Change auditing
+- EC2 Console: Instance status
+- VPC Console: Network configuration
 
-### Logs de WireGuard
+### WireGuard Logs
 ```bash
-# SSH a la instancia
-ssh -i ~/.ssh/vpn-server-key ubuntu@TU_IP
+# SSH to instance
+ssh -i ~/.ssh/vpn-server-key ubuntu@YOUR_IP
 
-# Ver logs del contenedor
+# View container logs
 sudo docker logs wireguard -f
 
-# Ver clientes conectados
+# View connected clients
 sudo docker exec wireguard wg show
 ```
+
+## 🔒 Security Features
+
+### Infrastructure Security
+- **Automatic SSH key generation and storage** in Parameter Store
+- **Minimal security group rules** (only required ports)
+- **Isolated VPC environment**
+- **Encrypted Terraform state** in S3 with DynamoDB locking
+
+### Access Control
+- **GitHub Secrets**: No credentials in code
+- **Parameter Store**: Encrypted storage for sensitive data
+- **Time-limited deployment**: Use only when needed
+- **Comprehensive logging**: All actions tracked
+
+## 📈 Advanced Features
+
+### Debugging and Troubleshooting
+Both workflows include:
+- **Backend configuration verification**
+- **S3 state file checking**
+- **Security group validation**
+- **Instance status monitoring**
+- **WireGuard service verification**
+
+### State Management
+- **S3 backend**: Secure remote state storage
+- **DynamoDB locking**: Prevents concurrent modifications
+- **State validation**: Ensures consistency
+- **Automatic cleanup**: Removes orphaned resources
+
+### Cost Optimization
+- **Automated destruction**: No forgotten resources
+- **Instance type selection**: Choose based on needs
+- **Monitoring integration**: Track usage and costs
+- **Scheduling support**: Deploy only when needed
