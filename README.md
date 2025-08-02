@@ -37,7 +37,8 @@ This project creates a complete VPN infrastructure with:
 ├── 📁 scripts/                     # Utility scripts
 │   ├── 📄 setup-backend.sh        # Backend setup script
 │   └── 📄 verify-setup.sh         # Configuration verification
-└── 📄 SETUP-BACKEND.md            # Setup documentation
+├── 📄 SETUP-BACKEND.md            # Setup documentation
+└── 📄 LICENSE                     # MIT License
 ```
 
 ## ✨ Features
@@ -262,6 +263,5 @@ Each component has its own detailed README with:
 ---
 
 **⚡ Ready to deploy your VPN? Start with the Quick Start guide above!**
-3. 🚀 Usa los workflows de GitHub Actions
 
 ---
