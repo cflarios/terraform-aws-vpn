@@ -1,3 +1,8 @@
+# Data source to get available availability zones
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
 # Crear la VPC
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
@@ -24,7 +29,7 @@ resource "aws_internet_gateway" "main" {
 resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = var.public_subnet_cidr
-  availability_zone       = var.availability_zone
+  availability_zone       = var.availability_zone != "" ? var.availability_zone : data.aws_availability_zones.available.names[0]
   map_public_ip_on_launch = true
 
   tags = {

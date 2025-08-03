@@ -1,12 +1,12 @@
-# Variables de configuración general
+# General configuration variables
 variable "aws_region" {
-  description = "Región de AWS donde se desplegará la infraestructura"
+  description = "AWS region where infrastructure will be deployed"
   type        = string
   default     = "us-east-1"
 }
 
 variable "environment" {
-  description = "Nombre del entorno (dev, staging, prod)"
+  description = "Environment name (dev, staging, prod)"
   type        = string
   default     = "dev"
 }
@@ -17,28 +17,28 @@ variable "ssh_public_key" {
   default     = ""
 }
 
-# Variables de VPC
+# VPC variables
 variable "vpc_cidr" {
-  description = "CIDR block para la VPC"
+  description = "CIDR block for the VPC"
   type        = string
   default     = "10.0.0.0/16"
 }
 
 variable "availability_zone" {
-  description = "Zona de disponibilidad para la subnet pública"
+  description = "Availability zone for the public subnet (will use first AZ in region if not specified)"
   type        = string
-  default     = "us-east-1a"
+  default     = ""
 }
 
 variable "public_subnet_cidr" {
-  description = "CIDR block para la subnet pública"
+  description = "CIDR block for the public subnet"
   type        = string
   default     = "10.0.1.0/24"
 }
 
-# Variables de EC2
+# EC2 variables
 variable "instance_type" {
-  description = "Tipo de instancia EC2"
+  description = "EC2 instance type"
   type        = string
   default     = "t3.micro"
 }

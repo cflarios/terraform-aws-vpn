@@ -104,6 +104,7 @@ This project creates a complete VPN infrastructure with:
 2. Click **"Run workflow"**
 3. Configure options:
    - **Environment**: `dev`, `staging`, or `prod`
+   - **AWS Region**: Choose your preferred region (us-east-1, us-west-2, eu-west-1, etc.)
    - **Instance Type**: `t3.micro` (cheapest), `t3.small`, `t3.medium`
    - **WireGuard Peers**: Number of VPN clients (e.g., `3`)
 4. Click **"Run workflow"**
@@ -123,7 +124,8 @@ This project creates a complete VPN infrastructure with:
 1. Go to **Actions** → **"Destroy VPN Infrastructure"**
 2. Click **"Run workflow"**
 3. **IMPORTANT**: Type exactly `DESTROY` in the confirmation field
-4. Select the correct environment
+4. **Select the correct AWS region** (must match where it was deployed)
+5. Select the correct environment
 5. Click **"Run workflow"**
 6. ⏱️ Wait ~5 minutes for complete cleanup
 7. 💰 **$0 cost** - all resources destroyed
@@ -148,9 +150,10 @@ Modify these in your workflow or Terraform variables:
 
 ```yaml
 # In GitHub Actions workflow
-instance_type: "t3.micro"    # t3.micro, t3.small, t3.medium
-wireguard_peers: "5"         # Number of VPN clients
-environment: "dev"           # dev, staging, prod
+aws_region: "us-east-1"          # us-east-1, us-west-2, eu-west-1, etc.
+instance_type: "t3.micro"        # t3.micro, t3.small, t3.medium
+wireguard_peers: "5"             # Number of VPN clients
+environment: "dev"               # dev, staging, prod
 ```
 
 ### 🏗️ Local Development

@@ -78,9 +78,10 @@ The workflows need:
    ```
 
 2. **Configure parameters**:
-   - Environment: `dev` (or your preference)
-   - Instance Type: `t3.micro` (cheapest)
-   - WireGuard Peers: `3` (number of devices)
+   - **Environment**: `dev` (or your preference)
+   - **AWS Region**: Choose from available regions (us-east-1, us-west-2, eu-west-1, etc.)
+   - **Instance Type**: `t3.micro` (cheapest)
+   - **WireGuard Peers**: `3` (number of devices)
 
 3. **Run workflow**:
    - Click "Run workflow"
@@ -114,8 +115,9 @@ The workflows need:
    ```
 
 2. **Confirm destruction**:
-   - Confirmation: Type exactly `DESTROY`
-   - Environment: Must match the deployed one
+   - **Confirmation**: Type exactly `DESTROY`
+   - **AWS Region**: Must match the region where it was deployed
+   - **Environment**: Must match the deployed one
 
 3. **Run workflow**:
    - Click "Run workflow"
