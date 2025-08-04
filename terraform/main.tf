@@ -31,7 +31,7 @@ data "aws_ami" "ubuntu" {
 # Key Pair para acceso SSH
 resource "aws_key_pair" "vpn_key" {
   key_name   = "${var.environment}-vpn-key"
-  public_key = var.ssh_public_key != "" ? var.ssh_public_key : file("~/.ssh/vpn-server-key.pub")
+  public_key = var.ssh_public_key
 
   tags = {
     Name        = "${var.environment}-vpn-key"

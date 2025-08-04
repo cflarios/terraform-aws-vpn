@@ -191,7 +191,14 @@ jobs:
             --query 'Parameter.Value' \
             --output text > ~/.ssh/vpn-server-key-${{ matrix.region }}
           
+          # Get public key  
+          aws ssm get-parameter \
+            --name "/vpn/${{ github.event.inputs.environment }}/${{ matrix.region }}/ssh-public-key" \
+            --query 'Parameter.Value' \
+            --output text > ~/.ssh/vpn-server-key-${{ matrix.region }}.pub
+          
           chmod 600 ~/.ssh/vpn-server-key-${{ matrix.region }}
+          chmod 644 ~/.ssh/vpn-server-key-${{ matrix.region }}.pub
           echo "✅ SSH keys retrieved for ${{ matrix.region }}"
 
       - name: 🏗️ Setup Terraform
@@ -233,9 +240,10 @@ jobs:
         run: |
           echo "🗑️ Destroying infrastructure in ${{ matrix.region }}..."
           
-          # Set region variable
+          # Set region variable and SSH public key
           export TF_VAR_aws_region="${{ matrix.region }}"
           export TF_VAR_environment="${{ github.event.inputs.environment }}"
+          export TF_VAR_ssh_public_key="$(cat ~/.ssh/vpn-server-key-${{ matrix.region }}.pub)"
           
           # Try to destroy
           if terraform destroy -auto-approve; then

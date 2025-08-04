@@ -14,7 +14,6 @@ variable "environment" {
 variable "ssh_public_key" {
   description = "SSH public key content for EC2 access"
   type        = string
-  default     = ""
 }
 
 # VPC variables

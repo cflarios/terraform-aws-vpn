@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🔧 Fixed
+- Fixed SSH key file evaluation error in destroy workflows that prevented infrastructure cleanup
+- Enhanced all destroy workflows to retrieve SSH public keys from AWS Parameter Store during execution
+- Simplified Terraform SSH key resource configuration to prevent conditional file() evaluation issues
+- Added consistent AWS region variable passing in all workflow steps
+
 ## [2.0.0] - 2025-08-03
 
 ### 🌍 Added - Multi-Region Support

@@ -149,7 +149,7 @@ jobs:
             ls -la .terraform/
           fi
 
-      - name: � Terraform Plan (Destroy)
+      - name: 📋 Terraform Plan (Destroy)
         working-directory: ./terraform
         run: |
           # Debug: Check if we have state
@@ -162,6 +162,7 @@ jobs:
             --query 'Parameter.Value' \
             --output text)
           
+          export TF_VAR_aws_region="${{ env.AWS_REGION }}"
           export TF_VAR_environment="${{ github.event.inputs.environment }}"
           export TF_VAR_ssh_public_key="$SSH_PUBLIC_KEY"
           terraform plan -destroy -out=destroy-plan
@@ -175,6 +176,7 @@ jobs:
             --query 'Parameter.Value' \
             --output text)
           
+          export TF_VAR_aws_region="${{ env.AWS_REGION }}"
           export TF_VAR_environment="${{ github.event.inputs.environment }}"
           export TF_VAR_ssh_public_key="$SSH_PUBLIC_KEY"
           terraform apply -auto-approve destroy-plan
