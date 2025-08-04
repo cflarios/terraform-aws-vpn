@@ -1,19 +1,19 @@
 output "instance_id" {
-  description = "ID de la instancia EC2"
+  description = "EC2 instance ID"
   value       = aws_instance.main.id
 }
 
 output "public_ip" {
-  description = "Dirección IP pública de la instancia"
+  description = "Public IP address of the instance"
   value       = aws_instance.main.public_ip
 }
 
 output "public_dns" {
-  description = "DNS público de la instancia"
+  description = "Public DNS of the instance"
   value       = aws_instance.main.public_dns
 }
 
 output "private_ip" {
-  description = "Dirección IP privada de la instancia"
+  description = "Private IP address of the instance"
   value       = aws_instance.main.private_ip
 }

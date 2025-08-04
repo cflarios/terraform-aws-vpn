@@ -1,9 +1,9 @@
 output "security_group_id" {
-  description = "ID del Security Group"
+  description = "Security Group ID"
   value       = aws_security_group.main.id
 }
 
 output "security_group_name" {
-  description = "Nombre del Security Group"
+  description = "Security Group name"
   value       = aws_security_group.main.name
 }

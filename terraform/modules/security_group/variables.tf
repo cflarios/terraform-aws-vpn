@@ -1,9 +1,9 @@
 variable "vpc_id" {
-  description = "ID de la VPC donde crear el security group"
+  description = "VPC ID where to create the security group"
   type        = string
 }
 
 variable "environment" {
-  description = "Nombre del entorno"
+  description = "Environment name"
   type        = string
 }

@@ -1,10 +1,10 @@
 ---
-- name: Actualizar cache de paquetes
+- name: Update package cache
   apt:
     update_cache: yes
     cache_valid_time: 3600
 
-- name: Instalar dependencias para Docker
+- name: Install Docker dependencies
   apt:
     name:
       - apt-transport-https
@@ -13,20 +13,20 @@
       - gnupg
       - lsb-release
       - software-properties-common
-      - net-tools  # Incluye netstat
+      - net-tools  # Includes netstat
     state: present
 
-- name: Agregar clave GPG de Docker
+- name: Add Docker GPG key
   apt_key:
     url: https://download.docker.com/linux/ubuntu/gpg
     state: present
 
-- name: Agregar repositorio de Docker
+- name: Add Docker repository
   apt_repository:
     repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
     state: present
 
-- name: Instalar Docker
+- name: Install Docker
   apt:
     name:
       - docker-ce
@@ -35,19 +35,19 @@
       - docker-buildx-plugin
     state: present
 
-- name: Iniciar y habilitar Docker
+- name: Start and enable Docker
   systemd:
     name: docker
     state: started
     enabled: yes
 
-- name: Agregar usuario ubuntu al grupo docker
+- name: Add ubuntu user to docker group
   user:
     name: ubuntu
     groups: docker
     append: yes
 
-- name: Descargar docker-compose
+- name: Download docker-compose
   get_url:
     url: "https://github.com/docker/compose/releases/download/v{{ docker.compose_version }}/docker-compose-linux-x86_64"
     dest: /usr/local/bin/docker-compose
@@ -55,13 +55,13 @@
     owner: root
     group: root
 
-- name: Crear enlace simbólico para docker-compose
+- name: Create symbolic link for docker-compose
   file:
     src: /usr/local/bin/docker-compose
     dest: /usr/bin/docker-compose
     state: link
 
-- name: Crear directorio para WireGuard
+- name: Create directory for WireGuard
   file:
     path: "{{ wireguard.config_dir }}"
     state: directory
@@ -69,7 +69,7 @@
     owner: root
     group: root
 
-- name: Crear directorio para docker-compose
+- name: Create directory for docker-compose
   file:
     path: /root/docker-wireguard
     state: directory
@@ -77,7 +77,7 @@
     owner: root
     group: root
 
-- name: Crear archivo docker-compose.yml
+- name: Create docker-compose.yml file
   template:
     src: docker-compose.yml.j2
     dest: /root/docker-wireguard/docker-compose.yml
@@ -87,67 +87,67 @@
   notify:
     - restart wireguard container
 
-- name: Configurar firewall para WireGuard
+- name: Configure firewall for WireGuard
   ufw:
     rule: allow
     port: "{{ wireguard.server_port }}"
     proto: udp
 
-- name: Habilitar UFW
+- name: Enable UFW
   ufw:
     state: enabled
     policy: deny
     direction: incoming
 
-- name: Permitir SSH en firewall
+- name: Allow SSH in firewall
   ufw:
     rule: allow
     port: '22'
     proto: tcp
 
-- name: Permitir HTTPS en firewall
+- name: Allow HTTPS in firewall
   ufw:
     rule: allow
     port: '443'
     proto: tcp
 
-- name: Permitir servidor de configuraciones en firewall
+- name: Allow configuration server in firewall
   ufw:
     rule: allow
     port: '8080'
     proto: tcp
 
-- name: Iniciar contenedor WireGuard
+- name: Start WireGuard container
   shell: |
     cd /root/docker-wireguard
     docker-compose up -d
   register: docker_result
 
-- name: Esperar a que el contenedor esté corriendo
+- name: Wait for container to be running
   shell: docker ps | grep wireguard | grep Up
   register: container_status
   until: container_status.rc == 0
   retries: 30
   delay: 2
 
-- name: Esperar a que se generen las configuraciones de peers
+- name: Wait for peer configurations to be generated
   shell: |
-    # Esperar a que se cree al menos un directorio de peer
+    # Wait for at least one peer directory to be created
     timeout=60
     while [ $timeout -gt 0 ]; do
       if [ -d "{{ wireguard.config_dir }}/peer1" ] && [ -f "{{ wireguard.config_dir }}/peer1/peer1.conf" ]; then
-        echo "Configuraciones generadas"
+        echo "Configurations generated"
         exit 0
       fi
       sleep 2
       timeout=$((timeout-2))
     done
-    echo "Timeout esperando configuraciones"
+    echo "Timeout waiting for configurations"
     exit 1
   register: config_wait
   changed_when: false
 
-- name: Configurar script de descarga de configuraciones
+- name: Configure download configurations script
   template:
     src: download-configs.sh.j2
     dest: /root/download-configs.sh
@@ -155,7 +155,7 @@
     owner: root
     group: root
 
-- name: Crear servidor HTTP simple para descargar configuraciones
+- name: Create simple HTTP server to download configurations
   template:
     src: serve-configs.py.j2
     dest: /root/serve-configs.py
@@ -163,67 +163,67 @@
     owner: root
     group: root
 
-- name: Debug - Mostrar logs del contenedor WireGuard
+- name: Debug - Show WireGuard container logs
   shell: docker logs wireguard --tail 20
   register: container_logs
   changed_when: false
 
-- name: Mostrar logs del contenedor
+- name: Show container logs
   debug:
     msg: "{{ container_logs.stdout_lines }}"
 
-- name: Debug - Verificar estructura de directorios
-  shell: find {{ wireguard.config_dir }} -type f -name "*.conf" -o -name "*.png" 2>/dev/null || echo "No se encontraron archivos de configuración"
+- name: Debug - Check directory structure
+  shell: find {{ wireguard.config_dir }} -type f -name "*.conf" -o -name "*.png" 2>/dev/null || echo "No configuration files found"
   register: config_files
   changed_when: false
 
-- name: Mostrar archivos de configuración encontrados
+- name: Show found configuration files
   debug:
     msg: "{{ config_files.stdout_lines }}"
 
-- name: Instalar Python3 para el servidor HTTP
+- name: Install Python3 for HTTP server
   apt:
     name: python3
     state: present
 
-- name: Verificar que netstat está disponible
+- name: Check if netstat is available
   shell: command -v netstat
   register: netstat_check
   changed_when: false
   failed_when: false
 
-- name: Mostrar estado de netstat
+- name: Show netstat status
   debug:
-    msg: "{{ 'netstat está disponible' if netstat_check.rc == 0 else 'ADVERTENCIA: netstat no está disponible' }}"
+    msg: "{{ 'netstat is available' if netstat_check.rc == 0 else 'WARNING: netstat is not available' }}"
 
-- name: Verificar que las configuraciones existen antes de iniciar servidor HTTP
+- name: Check that configurations exist before starting HTTP server
   shell: ls -la {{ wireguard.config_dir }}/peer*/
   register: peer_check
   changed_when: false
 
-- name: Mostrar configuraciones encontradas
+- name: Show found configurations
   debug:
     msg: "{{ peer_check.stdout_lines }}"
 
-- name: Matar procesos previos del servidor de configuraciones
+- name: Kill previous configuration server processes
   shell: pkill -f serve-configs.py
   register: pkill_result
   failed_when: false
   changed_when: pkill_result.rc == 0
 
-- name: Iniciar servidor HTTP para configuraciones (puerto 8080)
+- name: Start HTTP server for configurations (port 8080)
   shell: |
     cd {{ wireguard.config_dir }}
     nohup python3 /root/serve-configs.py > /var/log/config-server.log 2>&1 &
     echo $! > /var/run/config-server.pid
   changed_when: true
 
-- name: Verificar que el servidor HTTP está corriendo
+- name: Check if HTTP server is running
   shell: netstat -tlnp | grep :8080
   register: http_server_check
   changed_when: false
   ignore_errors: yes
 
-- name: Mostrar estado del servidor HTTP
+- name: Show HTTP server status
   debug:
-    msg: "{{ 'Servidor HTTP corriendo en puerto 8080' if http_server_check.rc == 0 else 'Error: Servidor HTTP no está corriendo' }}"
+    msg: "{{ 'HTTP server running on port 8080' if http_server_check.rc == 0 else 'Error: HTTP server is not running' }}"

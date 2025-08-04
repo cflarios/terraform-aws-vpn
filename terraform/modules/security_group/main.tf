@@ -1,11 +1,11 @@
-# Security Group para la instancia
+# Security Group for the instance
 resource "aws_security_group" "main" {
   name_prefix = "${var.environment}-sg"
   vpc_id      = var.vpc_id
 
-  description = "Security group para instancia con puertos 22, 80, 443 y 51820"
+  description = "Security group for instance with ports 22, 80, 443 and 51820"
 
-  # SSH (Puerto 22)
+  # SSH (Port 22)
   ingress {
     description = "SSH"
     from_port   = 22
@@ -14,7 +14,7 @@ resource "aws_security_group" "main" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # HTTP (Puerto 80)
+  # HTTP (Port 80)
   ingress {
     description = "HTTP"
     from_port   = 80
@@ -23,9 +23,8 @@ resource "aws_security_group" "main" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # HTTPS (Puerto 443)
 
-  # Servidor de configuraciones WireGuard (Puerto 8080)
+  # WireGuard configuration server (Port 8080)
   ingress {
     description = "WireGuard Config Server"
     from_port   = 8080
@@ -34,7 +33,7 @@ resource "aws_security_group" "main" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # HTTPS (Puerto 443)
+  # HTTPS (Port 443)
   ingress {
     description = "HTTPS"
     from_port   = 443
@@ -43,7 +42,7 @@ resource "aws_security_group" "main" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # WireGuard (Puerto 51820)
+  # WireGuard (Port 51820)
   ingress {
     description = "WireGuard VPN"
     from_port   = 51820
@@ -52,7 +51,7 @@ resource "aws_security_group" "main" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Servidor de configuraciones WireGuard (Puerto 8080)
+  # WireGuard configuration server (Port 8080)
   ingress {
     description = "WireGuard Config Server"
     from_port   = 8080
@@ -61,7 +60,7 @@ resource "aws_security_group" "main" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Regla de salida - permitir todo el tráfico saliente
+  # Outbound rule - allow all outbound traffic
   egress {
     description = "All outbound traffic"
     from_port   = 0

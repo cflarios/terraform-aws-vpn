@@ -1,23 +1,23 @@
 ---
-- name: "Generar clave privada para {{ client.name }}"
+- name: "Generate private key for {{ client.name }}"
   shell: wg genkey
   register: client_private_key
   changed_when: false
   no_log: true
 
-- name: "Generar clave pública para {{ client.name }}"
+- name: "Generate public key for {{ client.name }}"
   shell: echo "{{ client_private_key.stdout }}" | wg pubkey
   register: client_public_key
   changed_when: false
   no_log: true
 
-- name: "Generar pre-shared key para {{ client.name }}"
+- name: "Generate pre-shared key for {{ client.name }}"
   shell: wg genpsk
   register: client_psk
   changed_when: false
   no_log: true
 
-- name: "Guardar clave privada de {{ client.name }}"
+- name: "Save private key for {{ client.name }}"
   copy:
     content: "{{ client_private_key.stdout }}"
     dest: "/etc/wireguard/keys/{{ client.name }}-private.key"
@@ -26,7 +26,7 @@
     group: root
   no_log: true
 
-- name: "Guardar clave pública de {{ client.name }}"
+- name: "Save public key for {{ client.name }}"
   copy:
     content: "{{ client_public_key.stdout }}"
     dest: "/etc/wireguard/keys/{{ client.name }}-public.key"
@@ -34,7 +34,7 @@
     owner: root
     group: root
 
-- name: "Guardar pre-shared key de {{ client.name }}"
+- name: "Save pre-shared key for {{ client.name }}"
   copy:
     content: "{{ client_psk.stdout }}"
     dest: "/etc/wireguard/keys/{{ client.name }}-psk.key"
@@ -43,7 +43,7 @@
     group: root
   no_log: true
 
-- name: "Registrar claves de {{ client.name }} para uso posterior"
+- name: "Register keys for {{ client.name }} for later use"
   set_fact:
     client_keys: "{{ client_keys | default({}) | combine({client.name: {'private': client_private_key.stdout, 'public': client_public_key.stdout, 'psk': client_psk.stdout}}) }}"
   no_log: true

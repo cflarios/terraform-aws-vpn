@@ -1,16 +1,16 @@
-# Ejemplo de configuración de variables
-# Copia este archivo a terraform.tfvars y modifica los valores según tus necesidades
+# Example variable configuration
+# Copy this file to terraform.tfvars and modify the values according to your needs
 
-# Configuración general
+# General configuration
 aws_region  = "us-east-1"
 environment = "dev"
 
-# Configuración de red
+# Network configuration
 vpc_cidr           = "10.0.0.0/16"
 availability_zone  = "us-east-1a"
 public_subnet_cidr = "10.0.1.0/24"
 
-# Configuración de EC2
+# EC2 configuration
 instance_type = "t3.micro"
 
-# Nota: El key pair se crea automáticamente usando ~/.ssh/vpn-server-key.pub
+# Note: The key pair is automatically created using ~/.ssh/vpn-server-key.pub

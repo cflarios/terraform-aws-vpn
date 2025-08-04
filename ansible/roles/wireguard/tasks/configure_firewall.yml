@@ -1,9 +1,9 @@
 ---
-- name: Reiniciar UFW
+- name: Reset UFW
   ufw:
     state: reset
 
-- name: Configurar políticas por defecto de UFW
+- name: Configure UFW default policies
   ufw:
     direction: "{{ item.direction }}"
     policy: "{{ item.policy }}"
@@ -11,31 +11,31 @@
     - { direction: 'incoming', policy: 'deny' }
     - { direction: 'outgoing', policy: 'allow' }
 
-- name: Permitir SSH
+- name: Allow SSH
   ufw:
     rule: allow
     port: '22'
     proto: tcp
 
-- name: Permitir HTTP
+- name: Allow HTTP
   ufw:
     rule: allow
     port: '80'
     proto: tcp
 
-- name: Permitir HTTPS
+- name: Allow HTTPS
   ufw:
     rule: allow
     port: '443'
     proto: tcp
 
-- name: Permitir WireGuard
+- name: Allow WireGuard
   ufw:
     rule: allow
     port: "{{ wireguard.port }}"
     proto: udp
 
-- name: Configurar NAT para WireGuard
+- name: Configure NAT for WireGuard
   blockinfile:
     path: /etc/ufw/before.rules
     marker: "# {mark} WIREGUARD RULES"
@@ -52,6 +52,6 @@
   notify:
     - restart ufw
 
-- name: Habilitar UFW
+- name: Enable UFW
   ufw:
     state: enabled

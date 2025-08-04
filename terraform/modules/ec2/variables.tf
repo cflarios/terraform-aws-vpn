@@ -1,29 +1,29 @@
 variable "ami_id" {
-  description = "ID de la AMI a utilizar"
+  description = "AMI ID to use"
   type        = string
 }
 
 variable "instance_type" {
-  description = "Tipo de instancia EC2"
+  description = "EC2 instance type"
   type        = string
 }
 
 variable "subnet_id" {
-  description = "ID de la subnet donde crear la instancia"
+  description = "Subnet ID where to create the instance"
   type        = string
 }
 
 variable "security_group_id" {
-  description = "ID del security group"
+  description = "Security group ID"
   type        = string
 }
 
 variable "key_name" {
-  description = "Nombre del key pair para SSH"
+  description = "Key pair name for SSH"
   type        = string
 }
 
 variable "environment" {
-  description = "Nombre del entorno"
+  description = "Environment name"
   type        = string
 }

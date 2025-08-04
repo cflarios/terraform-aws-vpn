@@ -1,37 +1,37 @@
 #!/bin/bash
 
-# Script para facilitar la descarga de configuraciones de WireGuard
-# Uso: ./download-configs.sh
+# Script to facilitate downloading WireGuard configurations
+# Usage: ./download-configs.sh
 
-echo "🔗 Configuraciones de WireGuard disponibles:"
+echo "🔗 Available WireGuard configurations:"
 echo "=============================================="
 
 CONFIG_DIR="{{ wireguard.config_dir }}"
 
-# Mostrar configuraciones disponibles
-echo "📁 Directorio de configuraciones: $CONFIG_DIR"
+# Show available configurations
+echo "📁 Configuration directory: $CONFIG_DIR"
 echo ""
 
 if [ -d "$CONFIG_DIR" ]; then
-    echo "📋 Archivos de configuración disponibles:"
-    ls -la $CONFIG_DIR/peer*/ 2>/dev/null | grep -E '\.(conf|png)$' || echo "⚠️  No se encontraron configuraciones de peers"
+    echo "📋 Available configuration files:"
+    ls -la $CONFIG_DIR/peer*/ 2>/dev/null | grep -E '\.(conf|png)$' || echo "⚠️  No peer configurations found"
     
     echo ""
-    echo "🌐 Para descargar desde tu máquina local:"
+    echo "🌐 To download from your local machine:"
     echo "=========================================="
     
-    # Mostrar comandos para descargar configuraciones
+    # Show commands to download configurations
     for peer_dir in $CONFIG_DIR/peer*/; do
         if [ -d "$peer_dir" ]; then
             peer_name=$(basename "$peer_dir")
             
-            # Configuración para escritorio
+            # Desktop configuration
             if [ -f "$peer_dir/$peer_name.conf" ]; then
-                echo "📱 Peer $peer_name (archivo .conf):"
+                echo "📱 Peer $peer_name (.conf file):"
                 echo "   scp -i ~/.ssh/vpn-server-key ubuntu@{{ ansible_facts['ec2_public_ipv4'] | default(hostvars[inventory_hostname]['ansible_host']) }}:$peer_dir$peer_name.conf ./"
             fi
             
-            # QR Code para móvil
+            # QR Code for mobile
             if [ -f "$peer_dir/$peer_name.png" ]; then
                 echo "📱 Peer $peer_name (QR Code):"
                 echo "   scp -i ~/.ssh/vpn-server-key ubuntu@{{ ansible_facts['ec2_public_ipv4'] | default(hostvars[inventory_hostname]['ansible_host']) }}:$peer_dir$peer_name.png ./"
@@ -40,12 +40,12 @@ if [ -d "$CONFIG_DIR" ]; then
         fi
     done
     
-    echo "🌍 Servidor HTTP para descarga (puerto 8080):"
+    echo "🌍 HTTP server for download (port 8080):"
     echo "   http://{{ ansible_facts['ec2_public_ipv4'] | default(hostvars[inventory_hostname]['ansible_host']) }}:8080"
     echo ""
-    echo "📊 Estado del contenedor:"
+    echo "📊 Container status:"
     docker ps | grep wireguard
     
 else
-    echo "❌ Directorio de configuraciones no encontrado"
+    echo "❌ Configuration directory not found"
 fi

@@ -1,4 +1,4 @@
-# Configuración del proveedor AWS
+# AWS provider configuration
 terraform {
   required_version = ">= 1.0"
   required_providers {
@@ -28,7 +28,7 @@ data "aws_ami" "ubuntu" {
   }
 }
 
-# Key Pair para acceso SSH
+# Key Pair for SSH access
 resource "aws_key_pair" "vpn_key" {
   key_name   = "${var.environment}-vpn-key"
   public_key = var.ssh_public_key
@@ -39,7 +39,7 @@ resource "aws_key_pair" "vpn_key" {
   }
 }
 
-# Módulo VPC
+# VPC Module
 module "vpc" {
   source = "./modules/vpc"
   
@@ -49,7 +49,7 @@ module "vpc" {
   environment         = var.environment
 }
 
-# Módulo Security Group
+# Security Group Module
 module "security_group" {
   source = "./modules/security_group"
   
@@ -57,7 +57,7 @@ module "security_group" {
   environment = var.environment
 }
 
-# Módulo EC2
+# EC2 Module
 module "ec2" {
   source = "./modules/ec2"
   

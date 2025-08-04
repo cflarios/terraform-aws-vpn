@@ -1,26 +1,26 @@
 #!/bin/bash
 
-# Script helper para configurar WireGuard con Docker usando Ansible
-# Uso: ./deploy.sh [IP_DEL_SERVIDOR]
+# Helper script to configure WireGuard with Docker using Ansible
+# Usage: ./deploy.sh [SERVER_IP]
 
 set -e
 
-# Colores para output
+# Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}� Deploy de WireGuard con Docker usando Ansible${NC}"
+echo -e "${BLUE}🚀 WireGuard with Docker deployment using Ansible${NC}"
 echo "================================================="
 
-# Verificar si Ansible está instalado
+# Check if Ansible is installed
 if ! command -v ansible &> /dev/null; then
-    echo -e "${YELLOW}⚠️  Ansible no está instalado${NC}"
-    echo -e "${BLUE}🔧 Instalando Ansible...${NC}"
+    echo -e "${YELLOW}⚠️  Ansible is not installed${NC}"
+    echo -e "${BLUE}🔧 Installing Ansible...${NC}"
     
-    # Detectar el sistema operativo
+    # Detect operating system
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         # Linux
         if command -v apt &> /dev/null; then
@@ -33,8 +33,8 @@ if ! command -v ansible &> /dev/null; then
             # Fedora
             sudo dnf install -y ansible
         else
-            echo -e "${RED}❌ No se pudo detectar el gestor de paquetes${NC}"
-            echo -e "${YELLOW}💡 Instala Ansible manualmente: https://docs.ansible.com/ansible/latest/installation_guide/index.html${NC}"
+            echo -e "${RED}❌ Could not detect package manager${NC}"
+            echo -e "${YELLOW}💡 Install Ansible manually: https://docs.ansible.com/ansible/latest/installation_guide/index.html${NC}"
             exit 1
         fi
     elif [[ "$OSTYPE" == "darwin"* ]]; then
@@ -42,88 +42,88 @@ if ! command -v ansible &> /dev/null; then
         if command -v brew &> /dev/null; then
             brew install ansible
         else
-            echo -e "${RED}❌ Homebrew no está instalado${NC}"
-            echo -e "${YELLOW}💡 Instala Homebrew primero: https://brew.sh/${NC}"
+            echo -e "${RED}❌ Homebrew is not installed${NC}"
+            echo -e "${YELLOW}💡 Install Homebrew first: https://brew.sh/${NC}"
             exit 1
         fi
     else
-        echo -e "${RED}❌ Sistema operativo no soportado: $OSTYPE${NC}"
-        echo -e "${YELLOW}💡 Instala Ansible manualmente: https://docs.ansible.com/ansible/latest/installation_guide/index.html${NC}"
+        echo -e "${RED}❌ Unsupported operating system: $OSTYPE${NC}"
+        echo -e "${YELLOW}💡 Install Ansible manually: https://docs.ansible.com/ansible/latest/installation_guide/index.html${NC}"
         exit 1
     fi
     
-    # Verificar que la instalación fue exitosa
+    # Verify installation was successful
     if ! command -v ansible &> /dev/null; then
-        echo -e "${RED}❌ Error al instalar Ansible${NC}"
+        echo -e "${RED}❌ Error installing Ansible${NC}"
         exit 1
     else
-        echo -e "${GREEN}✅ Ansible instalado correctamente${NC}"
+        echo -e "${GREEN}✅ Ansible installed successfully${NC}"
     fi
 else
-    echo -e "${GREEN}✅ Ansible ya está instalado${NC}"
+    echo -e "${GREEN}✅ Ansible is already installed${NC}"
 fi
 
-# Verificar si se proporcionó la IP del servidor
+# Check if server IP was provided
 if [ $# -eq 0 ]; then
-    echo -e "${YELLOW}⚠️  Uso: $0 <IP_DEL_SERVIDOR>${NC}"
-    echo -e "${YELLOW}💡 Ejemplo: $0 54.123.456.789${NC}"
+    echo -e "${YELLOW}⚠️  Usage: $0 <SERVER_IP>${NC}"
+    echo -e "${YELLOW}💡 Example: $0 54.123.456.789${NC}"
     exit 1
 fi
 
 SERVER_IP=$1
 
-# Verificar que la clave SSH existe
+# Check that SSH key exists
 if [ ! -f ~/.ssh/vpn-server-key ]; then
-    echo -e "${RED}❌ Clave SSH no encontrada en ~/.ssh/vpn-server-key${NC}"
-    echo -e "${YELLOW}💡 Ejecuta: ssh-keygen -t rsa -b 4096 -f ~/.ssh/vpn-server-key${NC}"
+    echo -e "${RED}❌ SSH key not found at ~/.ssh/vpn-server-key${NC}"
+    echo -e "${YELLOW}💡 Run: ssh-keygen -t rsa -b 4096 -f ~/.ssh/vpn-server-key${NC}"
     exit 1
 fi
 
-# Crear inventario dinámico
-echo -e "${BLUE}📝 Configurando inventario...${NC}"
+# Create dynamic inventory
+echo -e "${BLUE}📝 Configuring inventory...${NC}"
 cat > inventory.ini << EOF
 [vpn_servers]
 vpn-server ansible_host=${SERVER_IP} ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/vpn-server-key
 EOF
 
-echo -e "${GREEN}✅ Inventario configurado${NC}"
+echo -e "${GREEN}✅ Inventory configured${NC}"
 
-# Verificar conectividad
-echo -e "${BLUE}🔍 Verificando conectividad SSH...${NC}"
+# Check connectivity
+echo -e "${BLUE}🔍 Checking SSH connectivity...${NC}"
 if ansible vpn_servers -m ping; then
-    echo -e "${GREEN}✅ Conectividad SSH OK${NC}"
+    echo -e "${GREEN}✅ SSH connectivity OK${NC}"
 else
-    echo -e "${RED}❌ No se puede conectar al servidor${NC}"
-    echo -e "${YELLOW}💡 Verifica que:${NC}"
-    echo -e "${YELLOW}   - La IP del servidor es correcta${NC}"
-    echo -e "${YELLOW}   - El puerto SSH (22) está abierto${NC}"
-    echo -e "${YELLOW}   - La clave SSH es correcta${NC}"
+    echo -e "${RED}❌ Cannot connect to server${NC}"
+    echo -e "${YELLOW}💡 Verify that:${NC}"
+    echo -e "${YELLOW}   - The server IP is correct${NC}"
+    echo -e "${YELLOW}   - SSH port (22) is open${NC}"
+    echo -e "${YELLOW}   - The SSH key is correct${NC}"
     exit 1
 fi
 
-# Ejecutar playbook
-echo -e "${BLUE}🚀 Ejecutando playbook de WireGuard con Docker...${NC}"
+# Execute playbook
+echo -e "${BLUE}🚀 Running WireGuard with Docker playbook...${NC}"
 ansible-playbook site.yml
 
-echo -e "${GREEN}🎉 ¡Deploy completado!${NC}"
+echo -e "${GREEN}🎉 Deployment completed!${NC}"
 echo ""
-echo -e "${BLUE}📋 Próximos pasos:${NC}"
-echo -e "${YELLOW}1. Verificar contenedor Docker:${NC}"
+echo -e "${BLUE}📋 Next steps:${NC}"
+echo -e "${YELLOW}1. Check Docker container:${NC}"
 echo "   ssh -i ~/.ssh/vpn-server-key ubuntu@${SERVER_IP} 'sudo docker ps'"
 echo ""
-echo -e "${YELLOW}2. Ver logs del contenedor:${NC}"
+echo -e "${YELLOW}2. View container logs:${NC}"
 echo "   ssh -i ~/.ssh/vpn-server-key ubuntu@${SERVER_IP} 'sudo docker logs wireguard'"
 echo ""
-echo -e "${YELLOW}3. Acceder al servidor web de configuraciones:${NC}"
+echo -e "${YELLOW}3. Access configuration web server:${NC}"
 echo "   🌐 http://${SERVER_IP}:8080"
 echo ""
-echo -e "${YELLOW}4. Descargar configuración específica:${NC}"
+echo -e "${YELLOW}4. Download specific configuration:${NC}"
 echo "   scp -i ~/.ssh/vpn-server-key ubuntu@${SERVER_IP}:/root/wireguard/peer1/peer1.conf ."
 echo ""
-echo -e "${YELLOW}5. Ver QR code para móvil:${NC}"
-echo "   🌐 http://${SERVER_IP}:8080 (buscar archivos .png)"
+echo -e "${YELLOW}5. View QR code for mobile:${NC}"
+echo "   🌐 http://${SERVER_IP}:8080 (look for .png files)"
 echo ""
-echo -e "${YELLOW}6. Ejecutar script de ayuda en el servidor:${NC}"
+echo -e "${YELLOW}6. Run helper script on server:${NC}"
 echo "   ssh -i ~/.ssh/vpn-server-key ubuntu@${SERVER_IP} 'sudo /root/download-configs.sh'"
 echo ""
-echo -e "${GREEN}🔗 URL principal para descargas: http://${SERVER_IP}:8080${NC}"
+echo -e "${GREEN}🔗 Main URL for downloads: http://${SERVER_IP}:8080${NC}"

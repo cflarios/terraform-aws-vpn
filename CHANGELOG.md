@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🌐 Changed
+- **Complete English Translation**: All project files, comments, and documentation translated from Spanish to English
+  - Terraform configurations and comments
+  - Ansible playbooks, tasks, and templates
+  - Shell scripts and helper utilities
+  - Template files and configuration comments
+  - Improved internationalization and accessibility for global contributors
+
 ### 🔧 Fixed
 - Fixed SSH key file evaluation error in destroy workflows that prevented infrastructure cleanup
 - Enhanced all destroy workflows to retrieve SSH public keys from AWS Parameter Store during execution

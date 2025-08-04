@@ -1,20 +1,20 @@
 ---
-- name: "Leer clave pública de {{ client.name }}"
+- name: "Read public key for {{ client.name }}"
   slurp:
     src: "/etc/wireguard/keys/{{ client.name }}-public.key"
   register: client_public_key_file
 
-- name: "Leer clave privada de {{ client.name }}"
+- name: "Read private key for {{ client.name }}"
   slurp:
     src: "/etc/wireguard/keys/{{ client.name }}-private.key"
   register: client_private_key_file
 
-- name: "Leer pre-shared key de {{ client.name }}"
+- name: "Read pre-shared key for {{ client.name }}"
   slurp:
     src: "/etc/wireguard/keys/{{ client.name }}-psk.key"
   register: client_psk_file
 
-- name: "Crear configuración para {{ client.name }}"
+- name: "Create configuration for {{ client.name }}"
   template:
     src: client.conf.j2
     dest: "/etc/wireguard/clients/{{ client.name }}.conf"
@@ -27,7 +27,7 @@
     client_private_key: "{{ client_private_key_file.content | b64decode | trim }}"
     client_psk: "{{ client_psk_file.content | b64decode | trim }}"
 
-- name: "Generar código QR para {{ client.name }}"
+- name: "Generate QR code for {{ client.name }}"
   shell: |
     qrencode -t ansiutf8 < /etc/wireguard/clients/{{ client.name }}.conf > /etc/wireguard/clients/{{ client.name }}-qr.txt
   args:

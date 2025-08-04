@@ -1,10 +1,10 @@
 ---
-- name: Actualizar cache de paquetes
+- name: Update package cache
   apt:
     update_cache: yes
     cache_valid_time: 3600
 
-- name: Instalar paquetes necesarios
+- name: Install required packages
   apt:
     name:
       - wireguard
@@ -13,14 +13,14 @@
       - qrencode
     state: present
 
-- name: Habilitar IP forwarding
+- name: Enable IP forwarding
   sysctl:
     name: net.ipv4.ip_forward
     value: '1'
     state: present
     reload: yes
 
-- name: Crear directorio para claves de WireGuard
+- name: Create directory for WireGuard keys
   file:
     path: /etc/wireguard/keys
     state: directory
@@ -28,7 +28,7 @@
     owner: root
     group: root
 
-- name: Crear directorio para configuraciones de clientes
+- name: Create directory for client configurations
   file:
     path: /etc/wireguard/clients
     state: directory
@@ -36,19 +36,19 @@
     owner: root
     group: root
 
-- name: Generar clave privada del servidor
+- name: Generate server private key
   shell: wg genkey
   register: server_private_key
   changed_when: false
   no_log: true
 
-- name: Generar clave pública del servidor
+- name: Generate server public key
   shell: echo "{{ server_private_key.stdout }}" | wg pubkey
   register: server_public_key
   changed_when: false
   no_log: true
 
-- name: Guardar clave privada del servidor
+- name: Save server private key
   copy:
     content: "{{ server_private_key.stdout }}"
     dest: /etc/wireguard/keys/server-private.key
@@ -57,7 +57,7 @@
     group: root
   no_log: true
 
-- name: Guardar clave pública del servidor
+- name: Save server public key
   copy:
     content: "{{ server_public_key.stdout }}"
     dest: /etc/wireguard/keys/server-public.key
@@ -65,13 +65,13 @@
     owner: root
     group: root
 
-- name: Generar claves para clientes
+- name: Generate keys for clients
   include_tasks: generate_client_keys.yml
   loop: "{{ wireguard.clients }}"
   loop_control:
     loop_var: client
 
-- name: Crear configuración del servidor WireGuard
+- name: Create WireGuard server configuration
   template:
     src: wg0.conf.j2
     dest: /etc/wireguard/wg0.conf
@@ -81,17 +81,17 @@
   notify:
     - restart wireguard
 
-- name: Generar configuraciones para clientes
+- name: Generate configurations for clients
   include_tasks: generate_client_configs.yml
   loop: "{{ wireguard.clients }}"
   loop_control:
     loop_var: client
 
-- name: Configurar firewall UFW
+- name: Configure UFW firewall
   include_tasks: configure_firewall.yml
   when: firewall.enabled | default(true)
 
-- name: Habilitar y iniciar WireGuard
+- name: Enable and start WireGuard
   systemd:
     name: wg-quick@wg0
     enabled: yes

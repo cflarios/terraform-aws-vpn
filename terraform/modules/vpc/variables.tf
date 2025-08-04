@@ -1,19 +1,19 @@
 variable "vpc_cidr" {
-  description = "CIDR block para la VPC"
+  description = "CIDR block for the VPC"
   type        = string
 }
 
 variable "availability_zone" {
-  description = "Zona de disponibilidad"
+  description = "Availability zone"
   type        = string
 }
 
 variable "public_subnet_cidr" {
-  description = "CIDR block para la subnet pública"
+  description = "CIDR block for the public subnet"
   type        = string
 }
 
 variable "environment" {
-  description = "Nombre del entorno"
+  description = "Environment name"
   type        = string
 }
