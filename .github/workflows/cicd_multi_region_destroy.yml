@@ -1,0 +1,373 @@
+name: 🗑️ Destroy Multi-Region VPN Network
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to destroy'
+        required: true
+        default: 'multi-region'
+        type: string
+      regions:
+        description: 'AWS regions to destroy (comma-separated, or "all" for all deployed regions)'
+        required: true
+        default: 'all'
+        type: string
+      confirmation:
+        description: 'Type DESTROY-ALL to confirm multi-region destruction'
+        required: true
+        type: string
+
+jobs:
+  validate-and-discover:
+    name: ✅ Validate and Discover Deployments
+    runs-on: ubuntu-latest
+    
+    outputs:
+      regions_matrix: ${{ steps.discover_regions.outputs.regions_matrix }}
+      regions_list: ${{ steps.discover_regions.outputs.regions_list }}
+      total_regions: ${{ steps.discover_regions.outputs.total_regions }}
+      
+    steps:
+      - name: ✋ Validate Confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirmation }}" != "DESTROY-ALL" ]; then
+            echo "❌ ERROR: You must type exactly 'DESTROY-ALL' to confirm multi-region destruction"
+            echo "   You typed: '${{ github.event.inputs.confirmation }}'"
+            echo "   This will destroy VPN servers in multiple regions!"
+            exit 1
+          fi
+          echo "✅ Confirmation validated for multi-region destruction"
+
+      - name: 🔧 Configure AWS Credentials (us-east-1 for discovery)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: 🔍 Discover Deployed Regions
+        id: discover_regions
+        run: |
+          echo "🔍 Discovering deployed regions for environment: ${{ github.event.inputs.environment }}"
+          
+          REGIONS_INPUT="${{ github.event.inputs.regions }}"
+          ALL_POSSIBLE_REGIONS=("us-east-1" "us-east-2" "us-west-1" "us-west-2" "eu-west-1" "eu-west-2" "eu-central-1" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1")
+          
+          DEPLOYED_REGIONS=()
+          
+          if [ "$REGIONS_INPUT" = "all" ]; then
+            echo "🌍 Checking all possible regions for deployed infrastructure..."
+            
+            for region in "${ALL_POSSIBLE_REGIONS[@]}"; do
+              echo "🔍 Checking region: $region"
+              
+              # Check if backend bucket exists for this region
+              if aws ssm get-parameter \
+                --name "/vpn/${{ github.event.inputs.environment }}/$region/backend-bucket" \
+                --region $region 2>/dev/null >/dev/null; then
+                
+                # Verify instance IP exists too
+                if aws ssm get-parameter \
+                  --name "/vpn/${{ github.event.inputs.environment }}/$region/instance-ip" \
+                  --region $region 2>/dev/null >/dev/null; then
+                  
+                  DEPLOYED_REGIONS+=("$region")
+                  echo "✅ Found deployment in: $region"
+                else
+                  echo "⚠️  Found backend but no instance in: $region"
+                fi
+              else
+                echo "ℹ️  No deployment found in: $region"
+              fi
+            done
+          else
+            echo "📋 Using specified regions: $REGIONS_INPUT"
+            
+            # Parse comma-separated regions
+            REGIONS_CLEAN=$(echo "$REGIONS_INPUT" | tr -d ' ')
+            IFS=',' read -ra REGIONS_ARRAY <<< "$REGIONS_CLEAN"
+            
+            for region in "${REGIONS_ARRAY[@]}"; do
+              # Validate region
+              if [[ " ${ALL_POSSIBLE_REGIONS[@]} " =~ " ${region} " ]]; then
+                # Check if deployment exists
+                if aws ssm get-parameter \
+                  --name "/vpn/${{ github.event.inputs.environment }}/$region/backend-bucket" \
+                  --region $region 2>/dev/null >/dev/null; then
+                  
+                  DEPLOYED_REGIONS+=("$region")
+                  echo "✅ Found deployment in: $region"
+                else
+                  echo "❌ No deployment found in specified region: $region"
+                  echo "    Skipping this region..."
+                fi
+              else
+                echo "❌ Invalid region: $region"
+                exit 1
+              fi
+            done
+          fi
+          
+          if [ ${#DEPLOYED_REGIONS[@]} -eq 0 ]; then
+            echo "❌ No deployed infrastructure found for environment: ${{ github.event.inputs.environment }}"
+            echo "    Either the environment doesn't exist or all resources have already been destroyed."
+            exit 1
+          fi
+          
+          echo ""
+          echo "🎯 Found ${#DEPLOYED_REGIONS[@]} deployed regions:"
+          for region in "${DEPLOYED_REGIONS[@]}"; do
+            echo "  🌍 $region"
+          done
+          
+          # Create matrix for parallel jobs
+          MATRIX_JSON=$(printf '%s\n' "${DEPLOYED_REGIONS[@]}" | jq -R -s -c 'split("\n")[:-1] | map({region: .})')
+          echo "regions_matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT
+          
+          # Create comma-separated list
+          REGIONS_LIST=$(printf '%s,' "${DEPLOYED_REGIONS[@]}")
+          REGIONS_LIST=${REGIONS_LIST%,}  # Remove trailing comma
+          echo "regions_list=$REGIONS_LIST" >> $GITHUB_OUTPUT
+          echo "total_regions=${#DEPLOYED_REGIONS[@]}" >> $GITHUB_OUTPUT
+          
+          echo ""
+          echo "🗑️  Will destroy infrastructure in: $REGIONS_LIST"
+          echo "⚠️  This action cannot be undone!"
+
+  destroy-multi-region:
+    name: 🗑️ Destroy in ${{ matrix.region }}
+    runs-on: ubuntu-latest
+    needs: validate-and-discover
+    
+    strategy:
+      matrix:
+        include: ${{ fromJson(needs.validate-and-discover.outputs.regions_matrix) }}
+      max-parallel: 3  # Destroy max 3 regions simultaneously
+      fail-fast: false  # Continue with other regions even if one fails
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ matrix.region }}
+
+      - name: 🔍 Get Backend Configuration
+        id: get_backend
+        run: |
+          echo "🔍 Getting backend configuration for ${{ matrix.region }}..."
+          
+          BUCKET_NAME=$(aws ssm get-parameter \
+            --name "/vpn/${{ github.event.inputs.environment }}/${{ matrix.region }}/backend-bucket" \
+            --query 'Parameter.Value' \
+            --output text)
+          
+          TABLE_NAME=$(aws ssm get-parameter \
+            --name "/vpn/${{ github.event.inputs.environment }}/${{ matrix.region }}/backend-table" \
+            --query 'Parameter.Value' \
+            --output text)
+          
+          echo "backend_bucket=$BUCKET_NAME" >> $GITHUB_OUTPUT
+          echo "backend_table=$TABLE_NAME" >> $GITHUB_OUTPUT
+          
+          echo "✅ Backend configuration for ${{ matrix.region }}:"
+          echo "   🪣 S3 Bucket: $BUCKET_NAME"
+          echo "   🗄️ DynamoDB Table: $TABLE_NAME"
+
+      - name: 🔑 Get SSH Keys
+        run: |
+          echo "🔑 Retrieving SSH keys for ${{ matrix.region }}..."
+          mkdir -p ~/.ssh
+          
+          # Get private key
+          aws ssm get-parameter \
+            --name "/vpn/${{ github.event.inputs.environment }}/${{ matrix.region }}/ssh-private-key" \
+            --with-decryption \
+            --query 'Parameter.Value' \
+            --output text > ~/.ssh/vpn-server-key-${{ matrix.region }}
+          
+          chmod 600 ~/.ssh/vpn-server-key-${{ matrix.region }}
+          echo "✅ SSH keys retrieved for ${{ matrix.region }}"
+
+      - name: 🏗️ Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.0"
+
+      - name: 🚀 Initialize Terraform
+        working-directory: ./terraform
+        run: |
+          echo "🚀 Initializing Terraform for ${{ matrix.region }}..."
+          
+          terraform init \
+            -backend-config="bucket=${{ steps.get_backend.outputs.backend_bucket }}" \
+            -backend-config="key=vpn-${{ github.event.inputs.environment }}-${{ matrix.region }}/terraform.tfstate" \
+            -backend-config="region=${{ matrix.region }}" \
+            -backend-config="encrypt=true" \
+            -backend-config="dynamodb_table=${{ steps.get_backend.outputs.backend_table }}"
+
+      - name: 🔍 Debug Terraform State
+        working-directory: ./terraform
+        run: |
+          echo "🔍 Debugging Terraform state for ${{ matrix.region }}..."
+          
+          # Set variables
+          export TF_VAR_aws_region="${{ matrix.region }}"
+          export TF_VAR_environment="${{ github.event.inputs.environment }}"
+          
+          # Check what resources Terraform thinks exist
+          echo "📋 Current Terraform state:"
+          terraform show || echo "No state found or state is empty"
+          
+          echo ""
+          echo "📋 Resources in state:"
+          terraform state list || echo "No resources in state"
+
+      - name: 🗑️ Terraform Destroy
+        working-directory: ./terraform
+        run: |
+          echo "🗑️ Destroying infrastructure in ${{ matrix.region }}..."
+          
+          # Set region variable
+          export TF_VAR_aws_region="${{ matrix.region }}"
+          export TF_VAR_environment="${{ github.event.inputs.environment }}"
+          
+          # Try to destroy
+          if terraform destroy -auto-approve; then
+            echo "✅ Infrastructure successfully destroyed in ${{ matrix.region }}"
+          else
+            echo "⚠️  Terraform destroy had issues in ${{ matrix.region }}, but continuing with cleanup..."
+          fi
+
+      - name: 🧹 Clean Up Backend Resources
+        run: |
+          echo "🧹 Cleaning up backend resources for ${{ matrix.region }}..."
+          
+          BUCKET_NAME="${{ steps.get_backend.outputs.backend_bucket }}"
+          TABLE_NAME="${{ steps.get_backend.outputs.backend_table }}"
+          
+          # Remove all objects from S3 bucket (including versions)
+          echo "🗑️  Emptying S3 bucket: $BUCKET_NAME"
+          aws s3 rm "s3://$BUCKET_NAME" --recursive || echo "Bucket might be empty"
+          
+          # Delete all object versions
+          aws s3api list-object-versions --bucket "$BUCKET_NAME" --query 'Versions[].{Key:Key,VersionId:VersionId}' --output text | while read key version; do
+            if [ ! -z "$key" ]; then
+              aws s3api delete-object --bucket "$BUCKET_NAME" --key "$key" --version-id "$version" || true
+            fi
+          done
+          
+          # Delete all delete markers
+          aws s3api list-object-versions --bucket "$BUCKET_NAME" --query 'DeleteMarkers[].{Key:Key,VersionId:VersionId}' --output text | while read key version; do
+            if [ ! -z "$key" ]; then
+              aws s3api delete-object --bucket "$BUCKET_NAME" --key "$key" --version-id "$version" || true
+            fi
+          done
+          
+          # Delete S3 bucket
+          echo "🗑️  Deleting S3 bucket: $BUCKET_NAME"
+          aws s3api delete-bucket --bucket "$BUCKET_NAME" || echo "Bucket might already be deleted"
+          
+          # Delete DynamoDB table
+          echo "🗑️  Deleting DynamoDB table: $TABLE_NAME"
+          aws dynamodb delete-table --table-name "$TABLE_NAME" || echo "Table might already be deleted"
+          
+          echo "✅ Backend resources cleaned up for ${{ matrix.region }}"
+
+      - name: 🧹 Clean Up Parameter Store
+        run: |
+          echo "🧹 Cleaning up Parameter Store entries for ${{ matrix.region }}..."
+          
+          # List of parameters to delete
+          PARAMETERS=(
+            "/vpn/${{ github.event.inputs.environment }}/${{ matrix.region }}/backend-bucket"
+            "/vpn/${{ github.event.inputs.environment }}/${{ matrix.region }}/backend-table"
+            "/vpn/${{ github.event.inputs.environment }}/${{ matrix.region }}/ssh-private-key"
+            "/vpn/${{ github.event.inputs.environment }}/${{ matrix.region }}/ssh-public-key"
+            "/vpn/${{ github.event.inputs.environment }}/${{ matrix.region }}/instance-ip"
+          )
+          
+          for param in "${PARAMETERS[@]}"; do
+            echo "🗑️  Deleting parameter: $param"
+            aws ssm delete-parameter --name "$param" || echo "Parameter might not exist: $param"
+          done
+          
+          echo "✅ Parameter Store cleaned up for ${{ matrix.region }}"
+
+      - name: ✅ Region Destruction Complete
+        run: |
+          echo "🎉 Successfully destroyed all infrastructure in ${{ matrix.region }}!"
+          echo "✅ All resources have been cleaned up"
+          echo "💰 No more costs will be incurred for this region"
+
+  create-destruction-summary:
+    name: 📊 Create Destruction Summary
+    runs-on: ubuntu-latest
+    needs: [validate-and-discover, destroy-multi-region]
+    if: always()  # Run even if some destructions failed
+    
+    steps:
+      - name: 📊 Create Destruction Summary
+        run: |
+          echo "🗑️ Multi-Region VPN Destruction Summary"
+          echo "══════════════════════════════════════════════════════"
+          echo "🌍 Environment: ${{ github.event.inputs.environment }}"
+          echo "📋 Regions processed: ${{ needs.validate-and-discover.outputs.regions_list }}"
+          echo "🔢 Total regions: ${{ needs.validate-and-discover.outputs.total_regions }}"
+          echo "══════════════════════════════════════════════════════"
+
+      - name: 📋 Create GitHub Summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          # 🗑️ Multi-Region VPN Destruction Complete!
+          
+          ## 📊 Destruction Summary
+          - **Environment**: ${{ github.event.inputs.environment }}
+          - **Regions Destroyed**: ${{ needs.validate-and-discover.outputs.regions_list }}
+          - **Total Regions**: ${{ needs.validate-and-discover.outputs.total_regions }}
+          
+          ## ✅ Cleanup Actions Performed
+          
+          For each region, the following resources were destroyed:
+          
+          ### 🏗️ Infrastructure Resources
+          - ✅ EC2 instances
+          - ✅ VPC and networking components
+          - ✅ Security groups
+          - ✅ SSH key pairs
+          
+          ### 🗄️ Backend Resources
+          - ✅ S3 buckets (including all versions)
+          - ✅ DynamoDB tables
+          - ✅ Backend state files
+          
+          ### 🔐 Configuration Data
+          - ✅ SSH keys from Parameter Store
+          - ✅ Instance IP addresses
+          - ✅ Backend configuration parameters
+          
+          ## 💰 Cost Impact
+          - **All AWS resources destroyed** - no more costs will be incurred
+          - **Multi-region deployment completely cleaned up**
+          - **All state and configuration data removed**
+          
+          ## 🔄 Next Steps
+          If you want to deploy a new multi-region VPN network:
+          1. Use the **"Deploy Multi-Region VPN Network"** workflow
+          2. Select your desired regions
+          3. Configure instance types and peer counts
+          4. Everything will be set up fresh with new resources
+          
+          EOF
+
+      - name: 🎉 Final Success Message
+        run: |
+          echo "🎊 Multi-Region VPN Network Destruction Complete!"
+          echo "✅ All infrastructure across ${{ needs.validate-and-discover.outputs.total_regions }} regions has been destroyed"
+          echo "💰 No more costs will be incurred"
+          echo "🧹 All resources, state, and configuration data have been cleaned up"

@@ -5,41 +5,59 @@ This directory contains GitHub Actions workflows for automated management of tem
 ## 📋 Available Workflows
 
 ### 1. 🚀 Deploy VPN Infrastructure (`cicd_creation.yml`)
-**Purpose**: Deploys complete VPN infrastructure temporarily
+**Purpose**: Deploys complete VPN infrastructure in a single region
 
 **Trigger**: Manual (workflow_dispatch)
 
 **Configurable parameters**:
 - **Environment**: Environment name (dev, staging, prod)
+- **AWS Region**: Single region selection
 - **Instance Type**: EC2 instance type (t3.micro, t3.small, t3.medium)
 - **WireGuard Peers**: Number of VPN clients to generate (1-10)
 
+### 2. 🌍 Deploy Multi-Region VPN Network (`cicd_multi_region.yml`)
+**Purpose**: Deploys VPN infrastructure across multiple regions simultaneously
+
+**Trigger**: Manual (workflow_dispatch)
+
+**Configurable parameters**:
+- **Environment**: Environment name (multi-region recommended)
+- **Regions**: Comma-separated list of AWS regions (e.g., `us-east-1,eu-west-1,ap-southeast-1`)
+- **Instance Type**: EC2 instance type for all regions
+- **WireGuard Peers**: Number of VPN clients per region
+
 **Process**:
-1. 🏗️ **Terraform**: Creates AWS infrastructure (VPC, EC2, Security Groups)
-2. 🔑 **SSH Key**: Generates keys automatically
-3. ⏳ **Wait**: Waits for instance to be ready
-4. 🐳 **Ansible**: Configures Docker + WireGuard
-5. 📱 **Configurations**: Generates VPN clients automatically
-6. 🌐 **Web Server**: Activates server to download configs (port 8080)
+1. 🔍 **Validation**: Validates and parses region list
+2. 🏗️ **Parallel Deployment**: Deploys infrastructure in up to 5 regions simultaneously
+3. � **Per-Region Keys**: Generates unique SSH keys for each region
+4. 🌐 **Independent Servers**: Each region operates as a separate VPN server
+5. 📊 **Summary**: Creates deployment report with all server endpoints
 
-**Outputs**:
-- Public IP of the instance
-- Configuration web server URL
-- SSH access instructions
-
-### 2. 🗑️ Destroy VPN Infrastructure (`cicd_destroy.yml`)
-**Purpose**: Completely destroys infrastructure to save costs
+### 3. 🗑️ Destroy VPN Infrastructure (`cicd_destroy.yml`)
+**Purpose**: Destroys infrastructure in a single region
 
 **Trigger**: Manual (workflow_dispatch)
 
 **Parameters**:
-- **Confirmation**: You must type "DESTROY" to confirm
-- **Environment**: Name of environment to destroy
+- **Confirmation**: Must type "DESTROY" to confirm
+- **AWS Region**: Region where infrastructure was deployed
+- **Environment**: Environment to destroy
+
+### 4. 🗑️ Destroy Multi-Region VPN Network (`cicd_multi_region_destroy.yml`)
+**Purpose**: Destroys VPN infrastructure across multiple regions
+
+**Trigger**: Manual (workflow_dispatch)
+
+**Parameters**:
+- **Confirmation**: Must type "DESTROY-ALL" to confirm multi-region destruction
+- **Regions**: Comma-separated regions or "all" for auto-discovery
+- **Environment**: Environment to destroy
 
 **Process**:
-1. ✋ **Validation**: Confirms you really want to destroy
-2. 🗑️ **Terraform Destroy**: Removes all AWS resources
-3. 🧹 **Cleanup**: Cleans artifacts and temporary data
+1. 🔍 **Discovery**: Automatically finds deployed regions if "all" is specified
+2. ✋ **Validation**: Confirms multi-region destruction intent
+3. 🗑️ **Parallel Destruction**: Destroys infrastructure in up to 3 regions simultaneously
+4. 🧹 **Complete Cleanup**: Removes all backend resources, state, and configuration
 
 ## 🔧 Initial Setup
 
@@ -93,6 +111,28 @@ The workflows need:
    - Download `.conf` files for desktop
    - Download `.png` files (QR) for mobile
 
+### Deploy Multi-Region VPN Network
+
+1. **Go to GitHub Actions**:
+   ```
+   Your Repository → Actions → "Deploy Multi-Region VPN Network"
+   ```
+
+2. **Configure parameters**:
+   - **Environment**: `multi-region` (or your preference)
+   - **Regions**: `us-east-1,eu-west-1,ap-southeast-1` (comma-separated)
+   - **Instance Type**: `t3.micro` (cheapest)
+   - **WireGuard Peers**: `3` (number of devices per region)
+
+3. **Run workflow**:
+   - Click "Run workflow"
+   - Wait ~15-20 minutes (parallel deployment)
+
+4. **Access global network**:
+   - Each region will have its own web interface
+   - Choose the closest region for best performance
+   - All servers operate independently
+
 ### Connect Devices
 
 #### Desktop (Windows/Mac/Linux)
@@ -125,6 +165,27 @@ The workflows need:
 
 4. **Verify**:
    - All AWS resources deleted
+   - No more costs
+
+### Destroy Multi-Region VPN Network
+
+1. **Go to GitHub Actions**:
+   ```
+   Your Repository → Actions → "Destroy Multi-Region VPN Network"
+   ```
+
+2. **Confirm destruction**:
+   - **Confirmation**: Type exactly `DESTROY-ALL`
+   - **Regions**: Type `all` for auto-discovery, or specific regions
+   - **Environment**: Must match the deployed one
+
+3. **Run workflow**:
+   - Click "Run workflow"
+   - Wait ~10-15 minutes (parallel destruction)
+
+4. **Verify**:
+   - All resources across all regions deleted
+   - Complete cleanup of state and configuration
    - No more costs
 
 ## 💰 Cost Considerations

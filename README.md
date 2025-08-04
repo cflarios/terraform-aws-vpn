@@ -38,6 +38,7 @@ This project creates a complete VPN infrastructure with:
 │   ├── 📄 setup-backend.sh        # Backend setup script
 │   └── 📄 verify-setup.sh         # Configuration verification
 ├── 📄 SETUP-BACKEND.md            # Setup documentation
+├── 📄 CHANGELOG.md                # Version history and release notes
 └── 📄 LICENSE                     # MIT License
 ```
 
@@ -66,6 +67,8 @@ This project creates a complete VPN infrastructure with:
 ### 🚀 GitHub Actions Workflows
 - **Deploy Workflow**: Complete infrastructure deployment with one click
 - **Destroy Workflow**: Safe infrastructure destruction with confirmation
+- **Multi-Region Deploy**: Deploy VPN servers across multiple regions simultaneously
+- **Multi-Region Destroy**: Clean destruction of multi-region deployments
 - **Backend Management**: Automatic S3 backend creation and configuration
 - **State Persistence**: Terraform state safely stored in S3 with DynamoDB locking
 - **Debugging**: Comprehensive logging and state verification
@@ -130,17 +133,56 @@ This project creates a complete VPN infrastructure with:
 6. ⏱️ Wait ~5 minutes for complete cleanup
 7. 💰 **$0 cost** - all resources destroyed
 
+## 🌍 Multi-Region Deployment
+
+For global VPN coverage, you can deploy across multiple regions simultaneously:
+
+### 🚀 Deploy Multi-Region Network
+
+1. Go to **Actions** → **"Deploy Multi-Region VPN Network"**
+2. Click **"Run workflow"**
+3. Configure options:
+   - **Environment**: `multi-region` (or your preference)
+   - **Regions**: Comma-separated list (e.g., `us-east-1,eu-west-1,ap-southeast-1`)
+   - **Instance Type**: `t3.micro` (cheapest), `t3.small`, `t3.medium`
+   - **WireGuard Peers**: Number of VPN clients per region (e.g., `3`)
+4. Click **"Run workflow"**
+5. ☕ Wait ~15-20 minutes for global deployment
+
+### 🌐 Access Your Global VPN Network
+
+- Each region will have its own web interface: `http://REGION_IP:8080`
+- Download configurations from the region closest to you
+- Use different regions for different devices or backup connections
+- All servers operate independently
+
+### 🗑️ Destroy Multi-Region Network
+
+1. Go to **Actions** → **"Destroy Multi-Region VPN Network"**
+2. Click **"Run workflow"**
+3. **IMPORTANT**: Type exactly `DESTROY-ALL` in the confirmation field
+4. **Regions**: Type `all` to destroy all regions, or specific regions
+5. Click **"Run workflow"**
+6. ⏱️ Wait ~10-15 minutes for complete global cleanup
+7. 💰 **$0 cost** - all resources across all regions destroyed
+
 ## 💰 Cost Management
 
-### 💡 Cost Estimates
+### 💡 Cost Estimates (Per Region)
 - **t3.micro**: ~$8.50/month (730 hours)
 - **t3.small**: ~$17/month (730 hours)
 - **Daily costs**: ~$0.28 (micro) / ~$0.55 (small)
 
+### 🌍 Multi-Region Cost Examples
+- **3 regions (t3.micro)**: ~$25.50/month (~$0.84/day)
+- **5 regions (t3.micro)**: ~$42.50/month (~$1.40/day)
+- **Global coverage**: Choose regions strategically to balance cost vs. coverage
+
 ### 🛡️ Cost Protection
 - **Automatic Destruction**: Use workflows to avoid leaving resources running
 - **Instance Scheduling**: Consider running only when needed
-- **Monitoring**: AWS CloudWatch alerts for unexpected costs
+- **Regional Selection**: Deploy only in regions you need
+- **Monitoring**: AWS CloudWatch alerts for unexpected costs across all regions
 - **Budget Alerts**: Set up AWS Budget alerts for your account
 
 ## 🔧 Advanced Configuration
@@ -247,6 +289,7 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) file for 
 - **Issues**: Use GitHub Issues for bugs and feature requests
 - **Discussions**: GitHub Discussions for questions and community support
 - **Documentation**: Check all README files in subdirectories
+- **Changelog**: See [CHANGELOG.md](./CHANGELOG.md) for version history and release notes
 
 ## 📚 Additional Documentation
 
